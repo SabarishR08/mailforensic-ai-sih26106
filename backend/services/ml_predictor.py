@@ -76,6 +76,18 @@ def _check_legitimate_signals(text: str) -> dict:
         anti_signals.append('requests_sensitive_data')
     if any(phrase in tl for phrase in ['dear customer', 'dear user', 'dear valued']):
         anti_signals.append('generic_greeting')
+    # Crypto/financial fraud signals
+    if any(w in tl for w in ['bitcoin', 'btc', 'eth', 'crypto', 'wallet address', 'send.*btc']):
+        anti_signals.append('crypto_fraud')
+    if any(w in tl for w in ['guaranteed returns', 'guaranteed profit', 'guaranteed returns', 'risk-free', 'double your money']):
+        anti_signals.append('financial_scam')
+    if re.search(r'send.*\d|transfer.*\d|wire.*\d|pay.*\d.*fee', tl):
+        anti_signals.append('requests_money_transfer')
+    if re.search(r'limited spots|act now|expires in|only \d+ left', tl):
+        anti_signals.append('artificial_urgency')
+    # Suspicious sender patterns
+    if re.search(r'secur[ie]ty@|admin@|support@|noreply@', tl) and re.search(r'\.(xyz|tk|ml|ga|cf|pw|top|click|win|loan)', tl):
+        anti_signals.append('suspicious_sender_domain')
 
     # Decision: legitimate if strong signals AND no anti-signals
     is_legitimate = len(signals) >= 5 and len(anti_signals) == 0
