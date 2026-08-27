@@ -23,6 +23,10 @@ PHISHING_KEYWORDS = [
     "password", "login", "bank", "paypal", "update your", "congratulations",
 ]
 
+# Classification threshold — raise from 0.5 to 0.6 to reduce false positives
+# Emails scoring 0.5-0.6 are labeled "suspicious" (not phishing, not legitimate)
+PHISHING_THRESHOLD = 0.6
+
 # Feature columns used during training (19 manual features)
 MANUAL_FEATURE_COLS = [
     "char_count", "word_count", "url_count", "email_count",
@@ -209,9 +213,16 @@ class MLPredictor:
             else:
                 ensemble_prob = 0.5
 
-            is_phishing = ensemble_prob >= 0.5
-            label = "phishing" if is_phishing else "legitimate"
-            confidence = ensemble_prob if is_phishing else (1 - ensemble_prob)
+            # Classification with threshold
+            if ensemble_prob >= PHISHING_THRESHOLD:
+                label = "phishing"
+                confidence = ensemble_prob
+            elif ensemble_prob >= 0.5:
+                label = "suspicious"  # Borderline — not clearly phishing or legit
+                confidence = 1 - abs(ensemble_prob - 0.5) * 2  # Confidence decreases toward 0.5
+            else:
+                label = "legitimate"
+                confidence = 1 - ensemble_prob
 
             return label, float(round(confidence, 4))
 
@@ -276,9 +287,16 @@ class MLPredictor:
                 ensemble_prob = lgb_prob
                 model_used = "lightgbm_only"
 
-            is_phishing = ensemble_prob >= 0.5
-            label = "phishing" if is_phishing else "legitimate"
-            confidence = ensemble_prob if is_phishing else (1 - ensemble_prob)
+            # Classification with threshold
+            if ensemble_prob >= PHISHING_THRESHOLD:
+                label = "phishing"
+                confidence = ensemble_prob
+            elif ensemble_prob >= 0.5:
+                label = "suspicious"
+                confidence = 1 - abs(ensemble_prob - 0.5) * 2
+            else:
+                label = "legitimate"
+                confidence = 1 - ensemble_prob
 
             return {
                 "label": label,

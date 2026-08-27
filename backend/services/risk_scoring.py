@@ -35,6 +35,8 @@ class RiskScoringEngine:
         ml = analysis.get('ml_result', {})
         if ml.get('prediction') == 'phishing':
             ml_score = ml.get('confidence', 0.5) * 100
+        elif ml.get('prediction') == 'suspicious':
+            ml_score = 50  # Suspicious = moderate risk, not confirmed phishing
         elif ml.get('prediction') == 'legitimate':
             ml_score = (1 - ml.get('confidence', 0.5)) * 100
         else:
