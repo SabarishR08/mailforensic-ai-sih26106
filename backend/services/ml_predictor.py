@@ -38,6 +38,57 @@ MANUAL_FEATURE_COLS = [
 ]
 
 
+def _check_legitimate_signals(text: str) -> dict:
+    """
+    Heuristic check for obviously legitimate emails.
+    Returns {'is_legitimate': bool, 'reason': str, 'signals': list}.
+    Used to override ML when the email has ZERO phishing indicators.
+    """
+    tl = text.lower()
+    signals = []
+    anti_signals = []
+
+    # --- Pro-legitimate signals (these are NORMAL in legit emails) ---
+    if not re.search(r'http\S+|www\S+', tl):
+        signals.append('no_urls')
+    if not any(w in tl for w in ['urgent', 'immediately', 'act now', 'expires', 'last chance', 'suspended', 'locked']):
+        signals.append('no_urgency')
+    if not any(phrase in tl for phrase in [
+        'verify your password', 'confirm your login', 'reset your password',
+        'click here to verify', 'click here to confirm', 'click here to update',
+        'confirm your identity', 'verify your identity',
+        'send your bank', 'wire transfer', 'processing fee',
+    ]):
+        signals.append('no_credential_request')
+    if not re.search(r'\.(xyz|tk|ml|ga|cf|pw|top|click|win|loan)', tl):
+        signals.append('no_suspicious_tld')
+    if text.count('!') <= 1:
+        signals.append('low_exclamation')
+    if sum(1 for c in text if c.isupper()) / max(len(text), 1) < 0.15:
+        signals.append('normal_caps')
+
+    # --- Anti-legitimate signals (these suggest phishing) ---
+    if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', text):
+        anti_signals.append('contains_ip_address')
+    if any(w in tl for w in ['winner', 'prize', 'congratulations', 'claim your', 'million dollars']):
+        anti_signals.append('scam_keywords')
+    if re.search(r'send.*\$|\$.*send|bank detail|credit card.*number|social security', tl):
+        anti_signals.append('requests_sensitive_data')
+    if any(phrase in tl for phrase in ['dear customer', 'dear user', 'dear valued']):
+        anti_signals.append('generic_greeting')
+
+    # Decision: legitimate if strong signals AND no anti-signals
+    is_legitimate = len(signals) >= 5 and len(anti_signals) == 0
+    reason = f'{len(signals)} legit signals, {len(anti_signals)} anti-signals'
+
+    return {
+        'is_legitimate': is_legitimate,
+        'reason': reason,
+        'signals': signals,
+        'anti_signals': anti_signals,
+    }
+
+
 def _clean_text(text: str) -> str:
     """Clean text for TF-IDF vectorization."""
     text = re.sub(r'http\S+|www\S+', ' URL ', text.lower())
@@ -224,6 +275,14 @@ class MLPredictor:
                 label = "legitimate"
                 confidence = 1 - ensemble_prob
 
+            # Post-processing: override ML if email has strong legitimate signals
+            # This catches false positives where TF-IDF over-weights "account"/"sign in"
+            legit_check = _check_legitimate_signals(email_text)
+            if label == "phishing" and legit_check['is_legitimate']:
+                label = "legitimate"
+                confidence = 0.85  # High confidence override
+                logger.info(f"ML override: {legit_check['reason']}")
+
             return label, float(round(confidence, 4))
 
         except Exception as e:
@@ -297,6 +356,13 @@ class MLPredictor:
             else:
                 label = "legitimate"
                 confidence = 1 - ensemble_prob
+
+            # Post-processing override
+            legit_check = _check_legitimate_signals(email_text)
+            if label == "phishing" and legit_check['is_legitimate']:
+                label = "legitimate"
+                confidence = 0.85
+                model_used = "heuristic_override"
 
             return {
                 "label": label,
