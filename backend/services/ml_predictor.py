@@ -23,7 +23,7 @@ PHISHING_KEYWORDS = [
     "password", "login", "bank", "paypal", "update your", "congratulations",
 ]
 
-# Classification threshold — raise from 0.5 to 0.6 to reduce false positives
+# Classification threshold — 0.6 + heuristic override for false positives
 # Emails scoring 0.5-0.6 are labeled "suspicious" (not phishing, not legitimate)
 PHISHING_THRESHOLD = 0.6
 
