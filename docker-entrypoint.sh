@@ -6,9 +6,9 @@ echo "  AI Email Forensics Platform"
 echo "========================================"
 
 # Check for trained models
-MODEL_DIR="backend/ml_models"
+MODEL_DIR="backend/ml/models"
 MISSING=""
-for f in email_model.pkl email_vectorizer.pkl url_model.pkl url_vectorizer.pkl; do
+for f in xgb_email_threat_model.pkl lgb_email_threat_model.pkl tfidf_vectorizer.pkl feature_cols.json; do
     if [ ! -f "$MODEL_DIR/$f" ]; then
         MISSING="$MISSING $f"
     fi
@@ -22,10 +22,18 @@ if [ -n "$MISSING" ]; then
     echo "ML predictions will return 'unknown'."
     echo ""
     echo "To train models:"
-    echo "  1. Run training/train.py on Google Colab"
-    echo "  2. Copy .pkl files to $MODEL_DIR/"
-    echo "  3. Rebuild: docker compose up --build"
+    echo "  1. Open Colab notebook from README link"
+    echo "  2. Run training -> download .pkl files"
+    echo "  3. Copy to $MODEL_DIR/"
+    echo "  4. Rebuild: docker compose up --build"
     echo ""
+fi
+
+# Check for BERT model (optional — XGB+LGB work without it)
+if [ -f "$MODEL_DIR/distilbert_email_threat/config.json" ]; then
+    echo "✅ DistilBERT model found — full ensemble enabled"
+else
+    echo "ℹ️  DistilBERT not found — running XGB+LGB ensemble only (97.5% acc)"
 fi
 
 # Check for GeoLite2 database

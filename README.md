@@ -22,9 +22,18 @@
 ```
 ai-email-forensics/
 ├── backend/
-│   ├── ml_pipeline/        # ML pipeline (data loader, features, model builder)
+│   ├── ml/                 # Trained models + inference
+│   │   ├── models/             # .pkl files + DistilBERT weights
+│   │   │   ├── xgb_email_threat_model.pkl   (963 KB)
+│   │   │   ├── lgb_email_threat_model.pkl   (3.2 MB)
+│   │   │   ├── tfidf_vectorizer.pkl         (1.2 MB)
+│   │   │   ├── feature_cols.json
+│   │   │   ├── model_comparison.json
+│   │   │   └── distilbert_email_threat/      (268 MB, optional)
+│   │   └── email_classifier.py  # Standalone inference module
+│   ├── ml_pipeline/        # Training pipeline code (reference)
 │   ├── services/
-│   │   ├── ml_predictor.py      # ML prediction service
+│   │   ├── ml_predictor.py      # ML prediction (XGB+LGB, auto-detects BERT)
 │   │   ├── geo_service.py       # MaxMind GeoLite2 + ipapi
 │   │   ├── forensic_analyzer.py # Header forensics + routing chain
 │   │   ├── forensic_report.py   # PDF report (ReportLab)
@@ -63,7 +72,7 @@ ai-email-forensics/
 pip install -r requirements.txt
 
 # 2. Copy trained models from Google Drive
-#    Download from MyDrive/trained_models/ → place in backend/ml_models/
+#    Download from MyDrive/trained_models/ → place in backend/ml/models/
 
 # 3. (Optional) Place GeoLite2-City.mmdb in data/
 #    Free from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
@@ -88,7 +97,7 @@ docker compose up --build
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| ML Detection | ✅ | Stacking ensemble (XGBoost + LightGBM + DistilBERT) — 30k TF-IDF + 29 manual features |
+| ML Detection | ✅ | XGBoost + LightGBM ensemble (97.5% acc) + optional DistilBERT (98.9% acc) |
 | GeoLocation | ✅ | IP → City/Country/ASN with MaxMind GeoLite2 + ipapi fallback, country risk tiers |
 | Forensic Intelligence | ✅ | SPF/DKIM/DMARC analysis, Received chain tracing, per-hop geo, header mismatches |
 | Risk Scoring | ✅ | Weighted composite: ML + intel + auth + geo + forensic + content (0-100) |
@@ -99,6 +108,31 @@ docker compose up --build
 | Threat Intel Dashboard | ✅ | Phishing trends, auth failure rates, country heatmap |
 | Gmail Integration | ✅ | Live scan of inbox with full pipeline analysis |
 | Unit Tests | ✅ | 95 passing tests (ML pipeline + forensics + services) |
+
+### Model Accuracy (from Colab training)
+
+| Model | Accuracy | F1 | AUC | Disk Size | RAM |
+|-------|----------|-----|-----|-----------|-----|
+| XGBoost | 97.4% | 96.2% | 99.6% | 963 KB | ~50 MB |
+| LightGBM | 97.6% | 96.4% | 99.6% | 3.2 MB | ~30 MB |
+| DistilBERT | 98.9% | 98.4% | 99.9% | 268 MB | ~500 MB |
+| **XGB+LGB Ensemble** | **97.5%** | **96.4%** | **99.6%** | **4.2 MB** | **~80 MB** |
+| **Full 3-Model Ensemble** | **98.9%** | **98.4%** | **99.9%** | **272 MB** | **~600 MB** |
+
+> 💡 **Deployment tip**: The XGB+LGB ensemble fits on any free tier (Render, Railway, etc.).
+> The DistilBERT model adds 99% accuracy but requires ~2GB RAM — use paid tier or HuggingFace Spaces for that.
+
+---
+
+## 🚀 Deployment Options
+
+| Option | Models | RAM Needed | Cost |
+|--------|--------|------------|------|
+| **Free tier (Render/Railway)** | XGB + LGB | ~200 MB | Free |
+| **Paid tier ($7/mo)** | XGB + LGB + BERT | ~1 GB | $7/mo |
+| **HuggingFace Spaces** | Full ensemble | GPU available | Free |
+
+The `ml_predictor.py` auto-detects whether BERT is available and gracefully falls back to XGB+LGB.
 
 ---
 
@@ -140,7 +174,7 @@ MyDrive/datasets/
 3. **Enable GPU**: Runtime → Change runtime type → **T4 GPU** → Save
 4. **Runtime → Run all** (Ctrl+F9)
 5. Wait for all cells to finish — models save to `MyDrive/trained_models/`
-6. Download the `.pkl` files from `MyDrive/trained_models/` and place in `backend/ml_models/`
+6. Download the `.pkl` files from `MyDrive/trained_models/` and place in `backend/ml/models/`
 
 > ⚠️ If you get errors, check the **Bug fixes** section above.
 > The most common issue was `ParserError` on `llm_phishing.csv` — already fixed in this notebook.

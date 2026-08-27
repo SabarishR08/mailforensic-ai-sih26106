@@ -15,9 +15,9 @@ services:
       - SAFE_BROWSING_API_KEY=${SAFE_BROWSING_API_KEY:-}
       - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
     volumes:
-      # Mount trained models (train on Colab, copy here)
-      - ./backend/ml_models:/app/backend/ml_models
-      # Mount GeoLite2 database
+      # Mount trained models (train on Colab, copy .pkl files here)
+      - ./backend/ml/models:/app/backend/ml/models
+      # Mount GeoLite2 database (optional)
       - ./data:/app/data
       # Mount Gmail credentials (optional)
       - ./backend/credentials:/app/backend/credentials

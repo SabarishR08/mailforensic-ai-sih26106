@@ -13,12 +13,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy project (models are mounted via volume, not baked in)
 COPY backend/ backend/
 COPY dashboard/ dashboard/
 COPY training/ training/
-COPY data/ data/
 COPY .env.example .env.example
+
+# Create data dir for optional GeoLite2 mount
+RUN mkdir -p data
 
 # Create dirs
 RUN mkdir -p uploads/reports backend/credentials backend/logs

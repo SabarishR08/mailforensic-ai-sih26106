@@ -5,8 +5,10 @@ __pycache__/
 venv/
 .env
 
-# Models (retrain on Colab)
-backend/ml_models/*.pkl
+# Models — large binaries excluded, metadata tracked
+backend/ml/models/*.pkl
+backend/ml/models/distilbert_email_threat/
+backend/ml/models/*.png
 
 # Data (too large for git)
 data/
