@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Models (retrain on Colab)
+backend/ml_models/*.pkl
+
+# Data (too large for git)
+data/
+Kaggle_datasets/
+*.zip
+
+# Database
+*.db
+instance/
+
+# Credentials
+backend/credentials/
+token.pickle
+
+# Uploads & Reports
+uploads/
+reports/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Intelligence — AI Email Forensics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #1a237e; --accent: #283593; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        .top-bar {
+            background: linear-gradient(135deg, var(--primary), #0d1b3e);
+            padding: 16px 30px; display: flex; justify-content: space-between; align-items: center;
+            color: white; border-bottom: 2px solid rgba(0,229,255,0.2);
+        }
+        .top-bar h4 { margin: 0; font-weight: 700; }
+        .top-bar h4 i { color: #00e5ff; margin-right: 8px; }
+        .top-bar a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; }
+        .top-bar a:hover { color: white; }
+        .content { padding: 24px 30px; max-width: 1400px; margin: 0 auto; }
+
+        /* Stat cards */
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: white; border-radius: 12px; padding: 20px; text-align: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05); border-top: 3px solid var(--primary);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .number { font-size: 2.2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+        .stat-card .label { color: #888; font-size: 0.82rem; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card.phishing .number { color: #c62828; }
+        .stat-card.phishing { border-top-color: #c62828; }
+        .stat-card.safe .number { color: #2e7d32; }
+        .stat-card.safe { border-top-color: #2e7d32; }
+        .stat-card.warn .number { color: #e65100; }
+        .stat-card.warn { border-top-color: #e65100; }
+
+        /* Chart cards */
+        .chart-card {
+            background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+        .chart-card h6 {
+            color: var(--primary); font-weight: 700; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .chart-card h6 i { color: #00e5ff; }
+        .chart-wrapper { position: relative; width: 100%; }
+        .chart-wrapper.tall { height: 350px; }
+        .chart-wrapper.medium { height: 280px; }
+
+        /* Activity feed */
+        .activity-item {
+            display: flex; gap: 12px; padding: 10px 14px; margin-bottom: 6px;
+            background: #fafafa; border-radius: 8px; font-size: 0.85rem;
+            border-left: 3px solid #e0e0e0; transition: background 0.2s;
+        }
+        .activity-item:hover { background: #f0f0f0; }
+        .activity-item.phishing { border-left-color: #c62828; }
+        .activity-item.legitimate { border-left-color: #2e7d32; }
+        .activity-dot {
+            width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+        }
+        .activity-dot.phishing { background: #c62828; }
+        .activity-dot.legitimate { background: #2e7d32; }
+        .activity-dot.unknown { background: #f9a825; }
+        .activity-info { flex: 1; }
+        .activity-subject { font-weight: 600; color: #333; }
+        .activity-meta { color: #999; font-size: 0.78rem; margin-top: 2px; }
+        .activity-badges { display: flex; gap: 6px; margin-top: 4px; }
+        .mini-badge {
+            padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+        }
+        .mini-badge.phishing { background: #ffebee; color: #c62828; }
+        .mini-badge.legitimate { background: #e8f5e9; color: #2e7d32; }
+        .mini-badge.risk { background: #fff3e0; color: #e65100; }
+        .mini-badge.country { background: #e3f2fd; color: #1565c0; }
+
+        /* Controls */
+        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        .controls select, .controls input {
+            padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px;
+            font-size: 0.85rem; background: white;
+        }
+        .controls label { font-size: 0.85rem; color: #666; }
+        .btn-refresh {
+            padding: 6px 16px; background: var(--primary); color: white; border: none;
+            border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+        }
+        .btn-refresh:hover { background: var(--accent); }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .empty-state i { font-size: 3rem; margin-bottom: 12px; color: #ccc; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h4><i class="fas fa-chart-area"></i> Threat Intelligence</h4>
+        <a href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <div class="content">
+        <!-- Controls -->
+        <div class="controls">
+            <label>Time Range:</label>
+            <select id="range-select" onchange="loadAll()">
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+            <button class="btn-refresh" onclick="loadAll()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <div style="flex:1"></div>
+            <span id="last-updated" style="font-size:0.8rem; color:#999;"></span>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="stat-row">
+            <div class="stat-card" id="stat-total">
+                <div class="number" id="val-total">—</div>
+                <div class="label">Total Scans</div>
+            </div>
+            <div class="stat-card phishing" id="stat-phishing">
+                <div class="number" id="val-phishing">—</div>
+                <div class="label">Phishing Detected</div>
+            </div>
+            <div class="stat-card safe" id="stat-legit">
+                <div class="number" id="val-legit">—</div>
+                <div class="label">Legitimate</div>
+            </div>
+            <div class="stat-card warn" id="stat-rate">
+                <div class="number" id="val-rate">—</div>
+                <div class="label">Phishing Rate</div>
+            </div>
+            <div class="stat-card" id="stat-risk">
+                <div class="number" id="val-avg-risk">—</div>
+                <div class="label">Avg Risk Score</div>
+            </div>
+            <div class="stat-card" id="stat-trust">
+                <div class="number" id="val-avg-trust">—</div>
+                <div class="label">Avg Trust Score</div>
+            </div>
+            <div class="stat-card" id="stat-countries">
+                <div class="number" id="val-countries">—</div>
+                <div class="label">Countries Seen</div>
+            </div>
+        </div>
+
+        <!-- Row 1: Trend + Risk Distribution -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="chart-card">
+                    <h6><i class="fas fa-chart-line"></i> Phishing vs Legitimate Over Time</h6>
+                    <div class="chart-wrapper tall"><canvas id="trend-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="chart-card">
+                    <h6><i class="fas fa-chart-pie"></i> Risk Level Distribution</h6>
+                    <div class="chart-wrapper tall"><canvas id="risk-pie-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Risk Histogram + ML Predictions -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-chart-bar"></i> Risk Score Distribution</h6>
+                    <div class="chart-wrapper medium"><canvas id="risk-hist-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-brain"></i> ML Prediction Breakdown</h6>
+                    <div class="chart-wrapper medium"><canvas id="ml-pie-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Top Sources + Auth Failure Rates -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-globe"></i> Top Threat Source Countries</h6>
+                    <div class="chart-wrapper tall"><canvas id="geo-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-key"></i> Authentication Failure Rates</h6>
+                    <div class="chart-wrapper tall"><canvas id="auth-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Phishing Rate by Country + Recent Activity -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-percentage"></i> Phishing Rate by Country</h6>
+                    <div class="chart-wrapper tall"><canvas id="phishing-rate-chart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-card">
+                    <h6><i class="fas fa-stream"></i> Recent Activity</h6>
+                    <div id="activity-feed" style="max-height:400px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="empty-state" style="display:none;">
+            <i class="fas fa-inbox"></i>
+            <h5>No scan data yet</h5>
+            <p>Scan some emails or upload .eml files to populate the threat intelligence dashboard.</p>
+            <a href="/email/scan" class="btn-refresh mt-2" style="text-decoration:none;">Go to Email Scanner</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    // --- Chart instances (so we can destroy before re-render) ---
+    var charts = {};
+    var COLORS = {
+        phishing: '#c62828', phishingBg: 'rgba(198,40,40,0.15)',
+        legitimate: '#2e7d32', legitimateBg: 'rgba(46,125,50,0.15)',
+        unknown: '#f9a825', unknownBg: 'rgba(249,168,37,0.15)',
+        spf: '#1565c0', dkim: '#6a1b9a', dmarc: '#e65100',
+        riskColors: { Critical: '#c62828', High: '#e65100', Medium: '#f9a825', Low: '#2e7d32', Safe: '#1565c0', Unknown: '#9e9e9e' },
+    };
+
+    function loadAll() {
+        var days = document.getElementById('range-select').value;
+        loadSummary();
+        loadTrends(days);
+        loadDistribution();
+        loadTopSources(days);
+        loadAuthTrends(days);
+        loadRecent();
+        document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    }
+
+    // --- Summary ---
+    function loadSummary() {
+        fetch('/api/threat-intel/summary').then(function(r){return r.json()}).then(function(d) {
+            if (d.total_scans === 0) {
+                document.getElementById('empty-state').style.display = '';
+            }
+            document.getElementById('val-total').textContent = d.total_scans.toLocaleString();
+            document.getElementById('val-phishing').textContent = d.phishing_count.toLocaleString();
+            document.getElementById('val-legit').textContent = d.legitimate_count.toLocaleString();
+            document.getElementById('val-rate').textContent = d.phishing_rate + '%';
+            document.getElementById('val-avg-risk').textContent = d.avg_risk_score;
+            document.getElementById('val-avg-trust').textContent = d.avg_trust_score;
+            document.getElementById('val-countries').textContent = d.unique_countries || 0;
+        });
+    }
+
+    // --- Trend Line Chart ---
+    function loadTrends(days) {
+        fetch('/api/threat-intel/trends?days=' + days).then(function(r){return r.json()}).then(function(d) {
+            if (charts.trend) charts.trend.destroy();
+            var ctx = document.getElementById('trend-chart').getContext('2d');
+            // Show only every Nth label to avoid crowding
+            var skip = Math.max(1, Math.floor(d.labels.length / 15));
+            var labels = d.labels.map(function(l,i) { return i % skip === 0 ? l.slice(5) : ''; });
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Phishing', data: d.phishing,
+                            borderColor: COLORS.phishing, backgroundColor: COLORS.phishingBg,
+                            fill: true, tension: 0.3, pointRadius: 2,
+                        },
+                        {
+                            label: 'Legitimate', data: d.legitimate,
+                            borderColor: COLORS.legitimate, backgroundColor: COLORS.legitimateBg,
+                            fill: true, tension: 0.3, pointRadius: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Risk Distribution Doughnut ---
+    function loadDistribution() {
+        fetch('/api/threat-intel/distribution').then(function(r){return r.json()}).then(function(d) {
+            // Risk level pie
+            if (charts.riskPie) charts.riskPie.destroy();
+            var rl = d.risk_levels || {};
+            var riskLabels = Object.keys(rl);
+            var riskValues = Object.values(rl);
+            var riskBg = riskLabels.map(function(k) { return COLORS.riskColors[k] || '#9e9e9e'; });
+            var ctx1 = document.getElementById('risk-pie-chart').getContext('2d');
+            charts.riskPie = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: riskLabels,
+                    datasets: [{ data: riskValues, backgroundColor: riskBg, borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { font: { size: 12 } } }
+                    },
+                    cutout: '55%'
+                }
+            });
+
+            // ML prediction pie
+            if (charts.mlPie) charts.mlPie.destroy();
+            var ml = d.ml_predictions || {};
+            var mlLabels = Object.keys(ml);
+            var mlValues = Object.values(ml);
+            var mlBg = mlLabels.map(function(k) {
+                if (k === 'phishing') return COLORS.phishing;
+                if (k === 'legitimate') return COLORS.legitimate;
+                return COLORS.unknown;
+            });
+            var ctx2 = document.getElementById('ml-pie-chart').getContext('2d');
+            charts.mlPie = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: mlLabels.map(function(l){ return l.charAt(0).toUpperCase() + l.slice(1); }),
+                    datasets: [{ data: mlValues, backgroundColor: mlBg, borderWidth: 2, borderColor: '#fff' }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } },
+                    cutout: '55%'
+                }
+            });
+
+            // Risk histogram
+            if (charts.riskHist) charts.riskHist.destroy();
+            var rh = d.risk_histogram || {};
+            var ctx3 = document.getElementById('risk-hist-chart').getContext('2d');
+            var histBg = (rh.labels || []).map(function(_, i) {
+                var intensity = Math.round(50 + (i / 9) * 205);
+                return 'rgb(' + intensity + ', ' + Math.max(50, 200 - i * 20) + ', ' + Math.max(50, 200 - i * 25) + ')';
+            });
+            charts.riskHist = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: rh.labels || [],
+                    datasets: [{ label: 'Scans', data: rh.values || [], backgroundColor: histBg, borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, title: { display: true, text: 'Risk Score Range', font: { size: 11 } } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Count', font: { size: 11 } } }
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Top Sources ---
+    function loadTopSources(days) {
+        fetch('/api/threat-intel/top-sources').then(function(r){return r.json()}).then(function(d) {
+            // Volume bar chart
+            if (charts.geo) charts.geo.destroy();
+            var bv = d.by_volume || [];
+            var ctx = document.getElementById('geo-chart').getContext('2d');
+            charts.geo = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bv.map(function(x){ return x.country; }),
+                    datasets: [{
+                        label: 'Scans', data: bv.map(function(x){ return x.count; }),
+                        backgroundColor: bv.map(function(_, i) {
+                            return 'rgba(26,35,126,' + (0.9 - i * 0.05) + ')';
+                        }),
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, title: { display: true, text: 'Number of Scans', font: { size: 11 } } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Phishing rate bar chart
+            if (charts.phishingRate) charts.phishingRate.destroy();
+            var pr = d.phishing_rate || [];
+            var ctx2 = document.getElementById('phishing-rate-chart').getContext('2d');
+            charts.phishingRate = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: pr.map(function(x){ return x.country; }),
+                    datasets: [
+                        {
+                            label: 'Phishing', data: pr.map(function(x){ return x.phishing; }),
+                            backgroundColor: COLORS.phishing, borderRadius: 4,
+                        },
+                        {
+                            label: 'Legitimate', data: pr.map(function(x){ return x.total - x.phishing; }),
+                            backgroundColor: COLORS.legitimate, borderRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Count', font: { size: 11 } } }
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Auth Failure Trends ---
+    function loadAuthTrends(days) {
+        fetch('/api/threat-intel/auth-trends?days=' + days).then(function(r){return r.json()}).then(function(d) {
+            if (charts.auth) charts.auth.destroy();
+            var ctx = document.getElementById('auth-chart').getContext('2d');
+            var skip = Math.max(1, Math.floor(d.labels.length / 15));
+            var labels = d.labels.map(function(l,i) { return i % skip === 0 ? l.slice(5) : ''; });
+            charts.auth = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'SPF Failure %', data: d.spf_failure_rate,
+                            borderColor: COLORS.spf, backgroundColor: 'rgba(21,101,192,0.1)',
+                            fill: true, tension: 0.3, pointRadius: 1,
+                        },
+                        {
+                            label: 'DKIM Failure %', data: d.dkim_failure_rate,
+                            borderColor: COLORS.dkim, backgroundColor: 'rgba(106,27,154,0.1)',
+                            fill: true, tension: 0.3, pointRadius: 1,
+                        },
+                        {
+                            label: 'DMARC Failure %', data: d.dmarc_failure_rate,
+                            borderColor: COLORS.dmarc, backgroundColor: 'rgba(230,81,0,0.1)',
+                            fill: true, tension: 0.3, pointRadius: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Failure Rate %', font: { size: 11 } } }
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Recent Activity Feed ---
+    function loadRecent() {
+        fetch('/api/threat-intel/recent?limit=25').then(function(r){return r.json()}).then(function(d) {
+            var feed = document.getElementById('activity-feed');
+            var scans = d.scans || [];
+            if (scans.length === 0) {
+                feed.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">No recent scans</div>';
+                return;
+            }
+            var html = '';
+            scans.forEach(function(s) {
+                var pred = s.ml_prediction || 'unknown';
+                var time = s.timestamp ? new Date(s.timestamp).toLocaleString() : '';
+                html += '<div class="activity-item ' + pred + '">' +
+                    '<div class="activity-dot ' + pred + '"></div>' +
+                    '<div class="activity-info">' +
+                        '<div class="activity-subject">' + escapeHtml(s.subject || s.email_id || 'Unknown') + '</div>' +
+                        '<div class="activity-meta">' +
+                            escapeHtml(s.from || '') + ' &middot; ' + time +
+                        '</div>' +
+                        '<div class="activity-badges">' +
+                            '<span class="mini-badge ' + pred + '">' + pred.toUpperCase() + '</span>' +
+                            '<span class="mini-badge risk">Risk: ' + (s.risk_score || 0) + '</span>' +
+                            (s.geo_city ? '<span class="mini-badge country"><i class="fas fa-map-pin"></i> ' + escapeHtml(s.geo_city) + '</span>' : '') +
+                            (s.geo_country ? '<span class="mini-badge country">' + s.geo_country + '</span>' : '') +
+                        '</div>' +
+                    '</div></div>';
+            });
+            feed.innerHTML = html;
+        });
+    }
+
+    // --- Helpers ---
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+    }
+
+    // --- Init ---
+    loadAll();
+    </script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Forensic Report — {{ scan.email_id }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-microscope"></i> Forensic Report: {{ scan.email_id }}</h4>
+        <div>
+            <a href="/forensic/api/report/pdf/{{ scan.id }}" class="btn btn-outline-danger"><i class="fas fa-file-pdf"></i> Export PDF</a>
+            <a href="/email/scan" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Risk Summary -->
+        <div class="col-md-4">
+            <div class="card p-4 mb-3">
+                <h6>Risk Assessment</h6>
+                {% set risk = result.risk_assessment or {} %}
+                <div class="text-center my-3">
+                    <div style="font-size:3rem;font-weight:700" class="risk-{{ (risk.risk_level or 'unknown')|lower }}">{{ risk.risk_score or 0 }}</div>
+                    <div class="badge-risk risk-{{ (risk.risk_level or 'unknown')|lower }}" style="font-size:1.1rem">{{ risk.risk_level or 'Unknown' }}</div>
+                </div>
+
+                {% set breakdown = risk.breakdown or {} %}
+                {% if breakdown %}
+                <table class="table table-sm">
+                    <thead><tr><th>Component</th><th>Score</th></tr></thead>
+                    <tbody>
+                    {% for k, v in breakdown.items() %}
+                    <tr><td>{{ k|replace('_', ' ')|title }}</td><td>{{ "%.1f"|format(v) }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+
+            <!-- ML Result -->
+            <div class="card p-4">
+                <h6>ML Classification</h6>
+                {% set ml = result.ml or {} %}
+                <p><span class="badge bg-{{ 'danger' if ml.prediction == 'phishing' else 'success' }}" style="font-size:1rem">{{ ml.prediction or 'unknown' }}</span></p>
+                <p>Confidence: <b>{{ ((ml.confidence or 0) * 100)|round(1) }}%</b></p>
+            </div>
+        </div>
+
+        <!-- Authentication & Headers -->
+        <div class="col-md-8">
+            <!-- Authentication -->
+            <div class="card p-4 mb-3">
+                <h6>Email Authentication</h6>
+                {% set auth = (result.forensic or {}).authentication or {} %}
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="p-3 rounded {{ 'bg-success' if auth.spf == 'PASS' else 'bg-danger' }} text-white">
+                            <div style="font-size:1.5rem;font-weight:700">SPF</div>
+                            <div>{{ auth.spf or 'MISSING' }}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded {{ 'bg-success' if auth.dkim == 'PASS' else 'bg-danger' }} text-white">
+                            <div style="font-size:1.5rem;font-weight:700">DKIM</div>
+                            <div>{{ auth.dkim or 'MISSING' }}</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 rounded {{ 'bg-success' if auth.dmarc == 'PASS' else 'bg-danger' }} text-white">
+                            <div style="font-size:1.5rem;font-weight:700">DMARC</div>
+                            <div>{{ auth.dmarc or 'MISSING' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Mismatches -->
+            {% set mismatches = (result.forensic or {}).mismatches or [] %}
+            {% if mismatches %}
+            <div class="card p-4 mb-3 border-danger">
+                <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Header Mismatches</h6>
+                {% for mm in mismatches %}
+                <div class="alert alert-{{ 'danger' if mm.severity == 'HIGH' else 'warning' }} py-2 mb-2">
+                    <b>[{{ mm.severity }}]</b> {{ mm.type }}: {{ mm.detail }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Routing Chain -->
+            {% set routing = (result.forensic or {}).routing or {} %}
+            {% set hops = routing.hops or [] %}
+            {% if hops %}
+            <div class="card p-4 mb-3">
+                <h6><i class="fas fa-route"></i> Routing Chain ({{ routing.hop_count }} hops)</h6>
+                <table class="table table-sm">
+                    <thead><tr><th>#</th><th>From</th><th>By</th><th>IP</th><th>Geo</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for hop in hops %}
+                    <tr class="{{ 'table-danger' if hop.suspicious else '' }}">
+                        <td>{{ hop.hop_number }}</td>
+                        <td style="font-size:0.8rem">{{ hop.from_host or '-' }}</td>
+                        <td style="font-size:0.8rem">{{ hop.by_host or '-' }}</td>
+                        <td>{{ hop.ip or '-' }}</td>
+                        <td>{% if hop.geo %}{{ hop.geo.city }}, {{ hop.geo.country_code }}{% else %}-{% endif %}</td>
+                        <td>{% if hop.suspicious %}<span class="text-danger">⚠ {{ hop.suspicious_reasons|join(', ') }}</span>{% else %}✓{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Geo Data -->
+            {% set geo = result.geo or {} %}
+            {% if geo and geo.latitude %}
+            <div class="card p-4 mb-3">
+                <h6><i class="fas fa-globe"></i> Sender Geolocation</h6>
+                <div id="forensic-map" style="height: 200px; border-radius: 8px;"></div>
+                <p class="mt-2">{{ geo.city }}, {{ geo.country }} | ASN: {{ geo.asn }} | {{ geo.org }} | Risk: {{ geo.risk_score }}/100</p>
+            </div>
+            {% endif %}
+
+            <!-- URL Results -->
+            {% set url_results = result.url_results or {} %}
+            {% if url_results %}
+            <div class="card p-4">
+                <h6><i class="fas fa-link"></i> URL Threat Intelligence</h6>
+                <table class="table table-sm">
+                    <thead><tr><th>URL</th><th>VT Score</th><th>SafeBrowsing</th><th>Risk</th></tr></thead>
+                    <tbody>
+                    {% for url, ti in url_results.items() %}
+                    <tr>
+                        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ url }}</td>
+                        <td>{{ ti.threat_score or 0 }}</td>
+                        <td>{{ (ti.sources or {}).safebrowsing.status or '-' }}</td>
+                        <td><span class="badge-risk risk-{{ (ti.threat_level or 'low')|lower }}">{{ ti.threat_level or '-' }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% set geo = result.geo or {} %}
+{% if geo and geo.latitude %}
+<script>
+    var map = L.map('forensic-map').setView([{{ geo.latitude }}, {{ geo.longitude }}], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    L.marker([{{ geo.latitude }}, {{ geo.longitude }}]).addTo(map)
+        .bindPopup('<b>{{ geo.city }}, {{ geo.country }}</b><br>Risk: {{ geo.risk_score }}/100').openPopup();
+</script>
+{% endif %}
+{% endblock %}

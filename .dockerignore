@@ -1,0 +1,50 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Environment
+.env
+
+# Data (large, mount as volume)
+data/
+Kaggle_datasets/
+*.zip
+
+# Models (mount as volume)
+backend/ml_models/*.pkl
+
+# Database (mount as volume)
+*.db
+instance/
+
+# Credentials (mount as volume)
+backend/credentials/
+
+# Uploads (mount as volume)
+uploads/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Training logs
+training/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Validation scripts (dev only)
+validate.py
+quick_validate.py

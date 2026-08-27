@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forensic Analysis — AI Email Forensics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #1a237e; --accent: #283593; --glow: #00e5ff; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        /* Header bar */
+        .top-bar {
+            background: linear-gradient(135deg, var(--primary), #0d1b3e);
+            padding: 16px 30px; display: flex; justify-content: space-between; align-items: center;
+            color: white; border-bottom: 2px solid rgba(0,229,255,0.2);
+        }
+        .top-bar h4 { margin: 0; font-weight: 700; }
+        .top-bar h4 i { color: var(--glow); margin-right: 8px; }
+        .top-bar a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; }
+        .top-bar a:hover { color: white; }
+
+        /* Upload zone */
+        .upload-zone {
+            border: 3px dashed #c5cae9; border-radius: 16px;
+            padding: 60px 30px; text-align: center; background: white;
+            transition: all 0.3s; cursor: pointer; position: relative;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--glow); background: #f0f9ff;
+            box-shadow: 0 0 30px rgba(0,229,255,0.1);
+        }
+        .upload-zone.dragover { transform: scale(1.01); }
+        .upload-zone .icon { font-size: 3rem; color: #c5cae9; margin-bottom: 16px; }
+        .upload-zone.dragover .icon { color: var(--glow); }
+        .upload-zone h5 { color: var(--primary); margin-bottom: 8px; }
+        .upload-zone p { color: #666; font-size: 0.9rem; }
+        .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+        /* Spinner */
+        .analysis-spinner {
+            display: none; text-align: center; padding: 40px;
+        }
+        .analysis-spinner.active { display: block; }
+        .spinner-border { width: 3rem; height: 3rem; color: var(--glow); }
+        .spinner-text { color: #666; margin-top: 12px; font-size: 0.95rem; }
+
+        /* Results container */
+        .results { display: none; }
+        .results.active { display: block; animation: fadeUp 0.4s ease; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
+
+        /* Section cards */
+        .section-card {
+            background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05); border-left: 4px solid var(--primary);
+        }
+        .section-card h6 {
+            color: var(--primary); font-weight: 700; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 14px;
+        }
+        .section-card.phishing-border { border-left-color: #d32f2f; }
+        .section-card.safe-border { border-left-color: #388e3c; }
+
+        /* Auth badges */
+        .auth-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+            margin: 3px;
+        }
+        .auth-pass { background: #e8f5e9; color: #2e7d32; }
+        .auth-fail { background: #ffebee; color: #c62828; }
+        .auth-missing { background: #f5f5f5; color: #757575; }
+        .auth-softfail { background: #fff3e0; color: #e65100; }
+
+        /* Risk gauge */
+        .risk-gauge {
+            width: 120px; height: 120px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 800; color: white; margin: 0 auto 12px;
+        }
+
+        /* Metadata table */
+        .meta-table { width: 100%; }
+        .meta-table td { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; }
+        .meta-table td:first-child { color: #999; width: 140px; font-weight: 600; }
+        .meta-table td:last-child { color: #333; word-break: break-all; }
+
+        /* Routing hops */
+        .hop-item {
+            display: flex; gap: 12px; padding: 10px 14px; margin-bottom: 6px;
+            background: #fafafa; border-radius: 8px; font-size: 0.85rem;
+            border-left: 3px solid #e0e0e0;
+        }
+        .hop-item.suspicious { border-left-color: #ef5350; background: #fff5f5; }
+        .hop-number {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--primary); color: white; display: flex;
+            align-items: center; justify-content: center; font-weight: 700;
+            font-size: 0.75rem; flex-shrink: 0;
+        }
+        .hop-item.suspicious .hop-number { background: #c62828; }
+        .hop-detail { flex: 1; }
+        .hop-host { font-weight: 600; color: #333; }
+        .hop-ip { color: #666; font-family: monospace; font-size: 0.8rem; }
+        .hop-geo { color: #1976d2; font-size: 0.78rem; }
+
+        /* Mismatch list */
+        .mismatch-item {
+            padding: 10px 14px; margin-bottom: 6px; background: #fff3e0;
+            border-radius: 8px; border-left: 3px solid #f57c00; font-size: 0.85rem;
+        }
+        .mismatch-item.high { background: #ffebee; border-left-color: #c62828; }
+
+        /* Risk breakdown bars */
+        .risk-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .risk-bar-label { width: 130px; font-size: 0.82rem; color: #666; font-weight: 600; }
+        .risk-bar-track { flex: 1; height: 10px; background: #f0f0f0; border-radius: 5px; overflow: hidden; }
+        .risk-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
+        .risk-bar-value { width: 40px; text-align: right; font-size: 0.82rem; font-weight: 700; }
+
+        /* URL results */
+        .url-item {
+            padding: 10px 14px; margin-bottom: 6px; background: #f5f5f5;
+            border-radius: 8px; font-size: 0.85rem;
+        }
+        .url-text { font-family: monospace; word-break: break-all; color: #333; }
+        .url-score { float: right; font-weight: 700; }
+
+        /* Body preview */
+        .body-preview {
+            background: #f8f9fa; padding: 14px; border-radius: 8px;
+            font-family: monospace; font-size: 0.82rem; color: #555;
+            max-height: 200px; overflow-y: auto; white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Action buttons */
+        .btn-forensic {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white; font-weight: 600; padding: 10px 24px;
+            border: none; border-radius: 8px; cursor: pointer;
+        }
+        .btn-forensic:hover { box-shadow: 0 4px 15px rgba(26,35,126,0.3); transform: translateY(-1px); }
+        .btn-forensic:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Error state */
+        .error-state {
+            display: none; text-align: center; padding: 40px;
+            background: #fff5f5; border-radius: 12px; border: 1px solid #ffcdd2;
+        }
+        .error-state.active { display: block; }
+        .error-state i { font-size: 2.5rem; color: #c62828; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <!-- Top bar -->
+    <div class="top-bar">
+        <h4><i class="fas fa-microscope"></i> Forensic Analysis</h4>
+        <div>
+            <a href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="container-fluid" style="max-width: 1100px; padding: 30px;">
+
+        <!-- Upload Zone -->
+        <div id="upload-section">
+            <div class="upload-zone" id="drop-zone">
+                <div class="icon"><i class="fas fa-file-import"></i></div>
+                <h5>Drop an .eml file here</h5>
+                <p>or click to browse — no Gmail credentials needed</p>
+                <p style="margin-top:8px; font-size:0.8rem; color:#999;">
+                    Accepts raw .eml files exported from any email client
+                </p>
+                <input type="file" id="eml-input" accept=".eml,.txt">
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="analysis-spinner" id="loading-section">
+            <div class="spinner-border spinner-border-sm"></div>
+            <div class="spinner-text" id="loading-text">Parsing .eml file...</div>
+        </div>
+
+        <!-- Error -->
+        <div class="error-state" id="error-section">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h5>Analysis Failed</h5>
+            <p id="error-message" style="color:#c62828;"></p>
+            <button class="btn-forensic mt-3" onclick="resetPage()">
+                <i class="fas fa-redo"></i> Try Another File
+            </button>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results-section">
+
+            <!-- Risk Score + Email Metadata -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="section-card text-center" id="risk-card">
+                        <h6>Risk Assessment</h6>
+                        <div class="risk-gauge" id="risk-gauge">—</div>
+                        <div id="risk-level-text" style="font-size:1.1rem; font-weight:700;">—</div>
+                        <div id="risk-score-text" style="color:#999; font-size:0.85rem; margin-top:4px;"></div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="section-card">
+                        <h6>Email Metadata</h6>
+                        <table class="meta-table">
+                            <tr><td>Subject</td><td id="meta-subject">—</td></tr>
+                            <tr><td>From</td><td id="meta-from">—</td></tr>
+                            <tr><td>To</td><td id="meta-to">—</td></tr>
+                            <tr><td>Date</td><td id="meta-date">—</td></tr>
+                            <tr><td>Message-ID</td><td id="meta-msgid">—</td></tr>
+                            <tr><td>Body Length</td><td id="meta-bodylen">—</td></tr>
+                            <tr><td>ML Prediction</td><td id="meta-ml">—</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Authentication -->
+            <div class="section-card" id="auth-card">
+                <h6><i class="fas fa-key"></i> Email Authentication</h6>
+                <div id="auth-badges"></div>
+                <div id="auth-all-pass" class="mt-2" style="display:none;">
+                    <span class="auth-badge auth-pass"><i class="fas fa-check-circle"></i> All authentication checks passed</span>
+                </div>
+            </div>
+
+            <!-- Routing Chain -->
+            <div class="section-card" id="routing-card">
+                <h6><i class="fas fa-route"></i> Routing Chain</h6>
+                <div id="routing-hops"></div>
+                <div id="routing-origin" class="mt-2" style="font-size:0.85rem; color:#666;"></div>
+            </div>
+
+            <!-- Address Mismatches -->
+            <div class="section-card" id="mismatch-card" style="display:none;">
+                <h6><i class="fas fa-exclamation-triangle"></i> Address Mismatches</h6>
+                <div id="mismatch-list"></div>
+            </div>
+
+            <!-- Geo Location -->
+            <div class="section-card" id="geo-card" style="display:none;">
+                <h6><i class="fas fa-globe"></i> Sender IP Geolocation</h6>
+                <table class="meta-table">
+                    <tr><td>IP Address</td><td id="geo-ip">—</td></tr>
+                    <tr><td>City</td><td id="geo-city">—</td></tr>
+                    <tr><td>Country</td><td id="geo-country">—</td></tr>
+                    <tr><td>ASN / Org</td><td id="geo-org">—</td></tr>
+                    <tr><td>Hosting Provider</td><td id="geo-hosting">—</td></tr>
+                    <tr><td>Geo Risk Score</td><td id="geo-risk">—</td></tr>
+                    <tr><td>Data Source</td><td id="geo-source">—</td></tr>
+                </table>
+            </div>
+
+            <!-- URL Threat Intel -->
+            <div class="section-card" id="url-card" style="display:none;">
+                <h6><i class="fas fa-link"></i> URL Threat Intelligence</h6>
+                <div id="url-list"></div>
+            </div>
+
+            <!-- Risk Breakdown -->
+            <div class="section-card" id="breakdown-card">
+                <h6><i class="fas fa-chart-bar"></i> Risk Score Breakdown</h6>
+                <div id="risk-breakdown"></div>
+            </div>
+
+            <!-- Body Preview -->
+            <div class="section-card">
+                <h6><i class="fas fa-file-alt"></i> Body Preview</h6>
+                <div class="body-preview" id="body-preview">—</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="text-center mt-4 mb-5">
+                <button class="btn-forensic" onclick="resetPage()">
+                    <i class="fas fa-redo"></i> Analyze Another File
+                </button>
+                <a id="btn-pdf" href="#" class="btn-forensic ms-2" style="text-decoration:none; display:none;" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Download PDF Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- Upload handling ---
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('eml-input');
+
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        var files = e.dataTransfer.files;
+        if (files.length > 0) analyzeFile(files[0]);
+    });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) analyzeFile(fileInput.files[0]);
+    });
+
+    function analyzeFile(file) {
+        if (!file.name.toLowerCase().endsWith('.eml') && !file.name.toLowerCase().endsWith('.txt')) {
+            alert('Please upload a .eml file');
+            return;
+        }
+
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('loading-section').classList.add('active');
+        document.getElementById('loading-text').textContent = 'Analyzing ' + file.name + '...';
+
+        var formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/forensic/api/analyze-eml', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            renderResults(data);
+        })
+        .catch(function(err) {
+            showError('Network error: ' + err.message);
+        });
+    }
+
+    function showError(msg) {
+        document.getElementById('loading-section').classList.remove('active');
+        document.getElementById('error-section').classList.add('active');
+        document.getElementById('error-message').textContent = msg;
+    }
+
+    function resetPage() {
+        document.getElementById('upload-section').style.display = '';
+        document.getElementById('loading-section').classList.remove('active');
+        document.getElementById('error-section').classList.remove('active');
+        document.getElementById('results-section').classList.remove('active');
+        fileInput.value = '';
+    }
+
+    // --- Render results ---
+    function renderResults(data) {
+        document.getElementById('loading-section').classList.remove('active');
+        document.getElementById('results-section').classList.add('active');
+
+        var risk = data.risk_assessment || {};
+        var forensic = data.forensic || {};
+        var auth = forensic.authentication || {};
+        var routing = forensic.routing || {};
+        var geo = data.geo || {};
+        var ml = data.ml || {};
+
+        // Risk gauge
+        var score = risk.risk_score || 0;
+        var level = (risk.risk_level || 'Unknown').toLowerCase();
+        var gauge = document.getElementById('risk-gauge');
+        gauge.textContent = score;
+        gauge.style.background = getRiskGradient(level);
+        document.getElementById('risk-level-text').textContent = risk.risk_level || 'Unknown';
+        document.getElementById('risk-level-text').style.color = getRiskColor(level);
+        document.getElementById('risk-score-text').textContent = 'out of 100';
+
+        // Metadata
+        document.getElementById('meta-subject').textContent = data.subject || '—';
+        document.getElementById('meta-from').textContent = data.from || '—';
+        document.getElementById('meta-to').textContent = data.to || '—';
+        document.getElementById('meta-date').textContent = data.date || '—';
+        document.getElementById('meta-msgid').textContent = data.email_id || '—';
+        document.getElementById('meta-bodylen').textContent = (data.body_length || 0).toLocaleString() + ' characters';
+        document.getElementById('meta-ml').innerHTML =
+            '<span style="font-weight:700;color:' + (ml.prediction === 'phishing' ? '#c62828' : ml.prediction === 'legitimate' ? '#2e7d32' : '#666') + '">' +
+            (ml.prediction || 'unknown').toUpperCase() + '</span>' +
+            ' (' + ((ml.confidence || 0) * 100).toFixed(1) + '% confidence)' +
+            (ml.model_loaded ? '' : ' <span style="color:#999;font-size:0.8rem;">[model not loaded]</span>');
+
+        // Auth badges
+        var authHtml = '';
+        var authItems = [
+            { label: 'SPF', value: auth.spf },
+            { label: 'DKIM', value: auth.dkim },
+            { label: 'DMARC', value: auth.dmarc }
+        ];
+        authItems.forEach(function(item) {
+            if (!item.value) return;
+            var cls = 'auth-missing';
+            if (item.value === 'PASS') cls = 'auth-pass';
+            else if (item.value === 'FAIL') cls = 'auth-fail';
+            else if (item.value === 'SOFTFAIL') cls = 'auth-softfail';
+            authHtml += '<span class="auth-badge ' + cls + '"><i class="fas fa-' +
+                (item.value === 'PASS' ? 'check-circle' : item.value === 'FAIL' ? 'times-circle' : 'question-circle') +
+                '"></i> ' + item.label + ': ' + item.value + '</span>';
+        });
+        document.getElementById('auth-badges').innerHTML = authHtml;
+        document.getElementById('auth-all-pass').style.display = auth.all_pass ? '' : 'none';
+
+        // Routing hops
+        var hops = routing.hops || [];
+        var hopsHtml = '';
+        hops.forEach(function(hop) {
+            var suspClass = hop.suspicious ? ' suspicious' : '';
+            var geoStr = hop.geo ? ' — ' + (hop.geo.city || '') + ', ' + (hop.geo.country || '') + (hop.geo.org ? ' (' + hop.geo.org + ')' : '') : '';
+            hopsHtml += '<div class="hop-item' + suspClass + '">' +
+                '<div class="hop-number">' + hop.hop_number + '</div>' +
+                '<div class="hop-detail">' +
+                    '<div class="hop-host">' + (hop.from_host || '?') + ' → ' + (hop.by_host || '?') + '</div>' +
+                    (hop.ip ? '<div class="hop-ip">' + hop.ip + '</div>' : '') +
+                    (geoStr ? '<div class="hop-geo"><i class="fas fa-map-pin"></i>' + geoStr + '</div>' : '') +
+                    (hop.suspicious_reasons && hop.suspicious_reasons.length ?
+                        '<div style="color:#c62828;font-size:0.78rem;"><i class="fas fa-exclamation-triangle"></i> ' +
+                        hop.suspicious_reasons.join(', ') + '</div>' : '') +
+                '</div></div>';
+        });
+        document.getElementById('routing-hops').innerHTML = hopsHtml || '<div style="color:#999;">No routing headers found</div>';
+        document.getElementById('routing-origin').textContent = routing.origin_ip ?
+            'Origin IP: ' + routing.origin_ip + (routing.suspicious ? ' (suspicious)' : '') : '';
+
+        // Mismatches
+        var mismatches = forensic.mismatches || [];
+        if (mismatches.length > 0) {
+            document.getElementById('mismatch-card').style.display = '';
+            var mmHtml = '';
+            mismatches.forEach(function(mm) {
+                var cls = mm.severity === 'HIGH' ? ' high' : '';
+                mmHtml += '<div class="mismatch-item' + cls + '">' +
+                    '<strong>' + mm.type.replace(/_/g, ' ') + '</strong> (' + mm.severity + ')<br>' +
+                    '<span style="font-size:0.82rem;color:#666;">' + mm.detail + '</span></div>';
+            });
+            document.getElementById('mismatch-list').innerHTML = mmHtml;
+        }
+
+        // Geo
+        if (geo.ip && geo.source !== 'unknown') {
+            document.getElementById('geo-card').style.display = '';
+            document.getElementById('geo-ip').textContent = geo.ip || '—';
+            document.getElementById('geo-city').textContent = geo.city || '—';
+            document.getElementById('geo-country').textContent = (geo.country || '—') + (geo.country_code ? ' (' + geo.country_code + ')' : '');
+            document.getElementById('geo-org').textContent = geo.org || '—';
+            document.getElementById('geo-hosting').textContent = geo.is_hosting ? 'Yes (cloud/VPS)' : 'No';
+            document.getElementById('geo-risk').textContent = (geo.risk_score || 0) + '/100 (tier ' + (geo.risk_tier || 0) + ')';
+            document.getElementById('geo-source').textContent = geo.source || '—';
+        }
+
+        // URLs
+        var urls = data.urls_found || [];
+        var urlResults = data.url_results || {};
+        if (urls.length > 0) {
+            document.getElementById('url-card').style.display = '';
+            var urlHtml = '';
+            urls.forEach(function(url) {
+                var r = urlResults[url] || {};
+                var tiScore = r.threat_score || 0;
+                var tiColor = tiScore > 50 ? '#c62828' : tiScore > 20 ? '#e65100' : '#2e7d32';
+                urlHtml += '<div class="url-item">' +
+                    '<span class="url-score" style="color:' + tiColor + '">Score: ' + tiScore + '</span>' +
+                    '<div class="url-text">' + escapeHtml(url) + '</div>' +
+                    '<div style="font-size:0.78rem;color:#999;">' +
+                    'VT: ' + (r.virustotal || 'N/A') +
+                    ' | SafeBrowsing: ' + (r.safe_browsing || 'N/A') +
+                    ' | PhishTank: ' + (r.phishtank || 'N/A') +
+                    '</div></div>';
+            });
+            document.getElementById('url-list').innerHTML = urlHtml;
+        }
+
+        // Risk breakdown bars
+        var breakdown = risk.breakdown || {};
+        var weights = risk.weights || {};
+        var breakdownHtml = '';
+        var barLabels = {
+            ml_prediction: 'ML Prediction',
+            threat_intel: 'Threat Intel',
+            authentication: 'Authentication',
+            geolocation: 'Geolocation',
+            forensic: 'Forensic Trust',
+            content: 'Content Analysis'
+        };
+        for (var key in barLabels) {
+            var val = breakdown[key] || 0;
+            var w = weights[key] || 0;
+            var barColor = val > 70 ? '#c62828' : val > 40 ? '#f57c00' : val > 20 ? '#fbc02d' : '#388e3c';
+            breakdownHtml += '<div class="risk-bar-row">' +
+                '<div class="risk-bar-label">' + barLabels[key] + '</div>' +
+                '<div class="risk-bar-track"><div class="risk-bar-fill" style="width:' + val + '%;background:' + barColor + ';"></div></div>' +
+                '<div class="risk-bar-value">' + val + '</div>' +
+                '</div>';
+        }
+        document.getElementById('risk-breakdown').innerHTML = breakdownHtml;
+
+        // Body preview
+        document.getElementById('body-preview').textContent = data.body_preview || '(empty)';
+
+        // PDF link
+        if (data.scan_id) {
+            var pdfBtn = document.getElementById('btn-pdf');
+            pdfBtn.href = '/forensic/api/report/pdf/' + data.scan_id;
+            pdfBtn.style.display = '';
+        }
+
+        // Border color based on risk
+        document.getElementById('risk-card').className = 'section-card text-center ' +
+            (level === 'critical' || level === 'high' ? 'phishing-border' : 'safe-border');
+    }
+
+    // --- Helpers ---
+    function getRiskColor(level) {
+        var colors = { critical: '#c62828', high: '#f57c00', medium: '#f9a825', low: '#2e7d32', safe: '#1565c0' };
+        return colors[level] || '#666';
+    }
+    function getRiskGradient(level) {
+        var gradients = {
+            critical: 'linear-gradient(135deg, #b71c1c, #c62828)',
+            high: 'linear-gradient(135deg, #e65100, #f57c00)',
+            medium: 'linear-gradient(135deg, #f9a825, #fbc02d)',
+            low: 'linear-gradient(135deg, #1b5e20, #388e3c)',
+            safe: 'linear-gradient(135deg, #0d47a1, #1976d2)'
+        };
+        return gradients[level] || 'linear-gradient(135deg, #666, #999)';
+    }
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    </script>
+</body>
+</html>

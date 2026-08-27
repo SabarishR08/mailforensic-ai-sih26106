@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AI Email Forensics{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h4 class="mb-4"><i class="fas fa-chart-line"></i> Threat Overview</h4>
+
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="number">{{ stats.total_scans }}</div>
+                <div class="label">Total Emails Scanned</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="number text-danger">{{ stats.phishing_detected }}</div>
+                <div class="label">Phishing Detected</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="number text-warning">{{ stats.total_threats }}</div>
+                <div class="label">High/Critical Threats</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="number" id="ml-status">—</div>
+                <div class="label">ML Model Status</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Scans -->
+        <div class="col-md-8">
+            <div class="card p-4">
+                <h6><i class="fas fa-list"></i> Recent Email Scans</h6>
+                <table class="table table-sm mt-3">
+                    <thead><tr><th>Time</th><th>Email</th><th>ML Prediction</th><th>Risk</th><th>Trust</th><th>Geo</th><th></th></tr></thead>
+                    <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td class="text-muted" style="font-size:0.8rem">{{ scan.timestamp.strftime('%H:%M') if scan.timestamp else '-' }}</td>
+                        <td>{{ scan.email_id[:20] }}</td>
+                        <td><span class="badge bg-{{ 'danger' if scan.ml_prediction == 'phishing' else 'success' }}">{{ scan.ml_prediction }}</span></td>
+                        <td><span class="badge-risk risk-{{ scan.risk_level|lower }}">{{ scan.risk_level }} ({{ scan.risk_score }})</span></td>
+                        <td>{{ scan.forensic_trust_score }}/100</td>
+                        <td>{{ scan.geo_country or '-' }}</td>
+                        <td><a href="/forensic/report/{{ scan.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-search"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not scans %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No scans yet. Go to <a href="/email/scan">Email Scanner</a> to begin.</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sidebar Stats -->
+        <div class="col-md-4">
+            <div class="card p-4 mb-3">
+                <h6><i class="fas fa-globe"></i> Threat Origins</h6>
+                <div id="geo-map" style="height: 250px; border-radius: 8px; margin-top: 10px;"></div>
+            </div>
+            <div class="card p-4">
+                <h6><i class="fas fa-info-circle"></i> Quick Actions</h6>
+                <a href="/email/scan" class="btn btn-primary w-100 mt-2"><i class="fas fa-envelope"></i> Scan Gmail</a>
+                <a href="/dashboard#geo-map" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-map"></i> View Full Map</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Mini geo map
+    var map = L.map('geo-map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    fetch('/api/geo/threats').then(r => r.json()).then(data => {
+        data.points.forEach(p => {
+            var color = p.risk_level === 'Critical' ? '#d32f2f' : p.risk_level === 'High' ? '#f57c00' : '#fbc02d';
+            L.circleMarker([p.lat, p.lon], { radius: 6, color: color, fillColor: color, fillOpacity: 0.7 })
+                .bindPopup('<b>' + p.city + ', ' + p.country + '</b><br>Risk: ' + p.risk_level + ' (' + p.risk_score + ')')
+                .addTo(map);
+        });
+    });
+
+    // ML model status
+    fetch('/api/health').then(r => r.json()).then(d => {
+        document.getElementById('ml-status').textContent = '✓ Online';
+        document.getElementById('ml-status').className = 'number text-success';
+    }).catch(() => {
+        document.getElementById('ml-status').textContent = '✗ Offline';
+        document.getElementById('ml-status').className = 'number text-danger';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,279 @@
+"""General API routes + Threat Intelligence analytics"""
+import json
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from flask import Blueprint, jsonify, request
+from sqlalchemy import func, cast, Date
+from backend.models import ThreatLog, EmailScanResult, db
+
+api_bp = Blueprint('api', __name__)
+
+
+@api_bp.route('/health')
+def health():
+    return jsonify({'status': 'ok', 'service': 'ai-email-forensics'})
+
+
+@api_bp.route('/stats')
+def stats():
+    return jsonify({
+        'total_scans': EmailScanResult.query.count(),
+        'phishing_detected': EmailScanResult.query.filter_by(ml_prediction='phishing').count(),
+        'total_threats': ThreatLog.query.filter(ThreatLog.severity.in_(['High', 'Critical'])).count(),
+    })
+
+
+@api_bp.route('/geo/threats')
+def geo_threats():
+    """Return all scans with geo data for map visualization"""
+    scans = EmailScanResult.query.filter(EmailScanResult.geo_country.isnot(None)).all()
+    points = []
+    for s in scans:
+        result = json.loads(s.full_result) if s.full_result else {}
+        geo = result.get('geo', {})
+        if geo.get('latitude') and geo.get('longitude'):
+            points.append({
+                'lat': geo['latitude'],
+                'lon': geo['longitude'],
+                'country': geo.get('country', ''),
+                'city': geo.get('city', ''),
+                'risk_score': s.risk_score or 0,
+                'risk_level': s.risk_level or 'Unknown',
+                'email_id': s.email_id,
+                'timestamp': s.timestamp.isoformat() if s.timestamp else '',
+            })
+    return jsonify({'points': points, 'count': len(points)})
+
+
+# ---------------------------------------------------------------------------
+# Threat Intelligence Analytics API
+# ---------------------------------------------------------------------------
+
+@api_bp.route('/threat-intel/summary')
+def threat_intel_summary():
+    """Overview stats for the threat intel dashboard"""
+    total = EmailScanResult.query.count()
+    phishing = EmailScanResult.query.filter_by(ml_prediction='phishing').count()
+    legitimate = EmailScanResult.query.filter_by(ml_prediction='legitimate').count()
+    avg_risk = db.session.query(func.avg(EmailScanResult.risk_score)).scalar() or 0
+    avg_trust = db.session.query(func.avg(EmailScanResult.forensic_trust_score)).scalar() or 0
+
+    # Severity breakdown
+    risk_levels = db.session.query(
+        EmailScanResult.risk_level, func.count(EmailScanResult.id)
+    ).group_by(EmailScanResult.risk_level).all()
+
+    # Unique geo origins
+    countries = db.session.query(
+        EmailScanResult.geo_country, func.count(EmailScanResult.id)
+    ).filter(
+        EmailScanResult.geo_country.isnot(None),
+        EmailScanResult.geo_country != ''
+    ).group_by(EmailScanResult.geo_country).count()  # number of distinct countries
+
+    return jsonify({
+        'total_scans': total,
+        'phishing_count': phishing,
+        'legitimate_count': legitimate,
+        'phishing_rate': round(phishing / total * 100, 1) if total > 0 else 0,
+        'avg_risk_score': round(float(avg_risk), 1),
+        'avg_trust_score': round(float(avg_trust), 1),
+        'risk_levels': {level: count for level, count in risk_levels if level},
+        'unique_countries': countries,
+    })
+
+
+@api_bp.route('/threat-intel/trends')
+def threat_intel_trends():
+    """Phishing vs legitimate counts per day for the last N days"""
+    days = request.args.get('days', 30, type=int)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    rows = db.session.query(
+        cast(EmailScanResult.timestamp, Date).label('day'),
+        EmailScanResult.ml_prediction,
+        func.count(EmailScanResult.id)
+    ).filter(
+        EmailScanResult.timestamp >= cutoff
+    ).group_by('day', EmailScanResult.ml_prediction).all()
+
+    # Build a dict: { 'YYYY-MM-DD': { 'phishing': N, 'legitimate': N } }
+    trends = defaultdict(lambda: {'phishing': 0, 'legitimate': 0, 'unknown': 0})
+    for day, prediction, count in rows:
+        day_str = day.isoformat() if day else 'unknown'
+        pred = prediction or 'unknown'
+        if pred in ('phishing', 'legitimate', 'unknown'):
+            trends[day_str][pred] = count
+
+    # Fill in missing days with zeros
+    labels = []
+    phishing_data = []
+    legitimate_data = []
+    today = datetime.utcnow().date()
+    for i in range(days, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        labels.append(d)
+        phishing_data.append(trends[d]['phishing'])
+        legitimate_data.append(trends[d]['legitimate'])
+
+    return jsonify({
+        'labels': labels,
+        'phishing': phishing_data,
+        'legitimate': legitimate_data,
+        'days': days,
+    })
+
+
+@api_bp.route('/threat-intel/distribution')
+def threat_intel_distribution():
+    """Risk level + ML prediction distribution"""
+    # Risk level distribution
+    risk_dist = db.session.query(
+        EmailScanResult.risk_level, func.count(EmailScanResult.id)
+    ).group_by(EmailScanResult.risk_level).all()
+
+    # ML prediction distribution
+    ml_dist = db.session.query(
+        EmailScanResult.ml_prediction, func.count(EmailScanResult.id)
+    ).group_by(EmailScanResult.ml_prediction).all()
+
+    # Risk score histogram (buckets of 10)
+    all_scores = db.session.query(EmailScanResult.risk_score).filter(
+        EmailScanResult.risk_score.isnot(None)
+    ).all()
+    score_buckets = [0] * 10  # 0-10, 10-20, ..., 90-100
+    for (score,) in all_scores:
+        bucket = min(score // 10, 9)
+        score_buckets[bucket] += 1
+
+    return jsonify({
+        'risk_levels': {level: count for level, count in risk_dist if level},
+        'ml_predictions': {pred: count for pred, count in ml_dist if pred},
+        'risk_histogram': {
+            'labels': ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'],
+            'values': score_buckets,
+        },
+    })
+
+
+@api_bp.route('/threat-intel/top-sources')
+def threat_intel_top_sources():
+    """Top countries and ASNs sending threats"""
+    # Top countries by scan count
+    countries = db.session.query(
+        EmailScanResult.geo_country, func.count(EmailScanResult.id)
+    ).filter(
+        EmailScanResult.geo_country.isnot(None),
+        EmailScanResult.geo_country != ''
+    ).group_by(EmailScanResult.geo_country).order_by(
+        func.count(EmailScanResult.id).desc()
+    ).limit(15).all()
+
+    # Top countries by average risk score
+    country_risk = db.session.query(
+        EmailScanResult.geo_country, func.avg(EmailScanResult.risk_score)
+    ).filter(
+        EmailScanResult.geo_country.isnot(None),
+        EmailScanResult.geo_country != ''
+    ).group_by(EmailScanResult.geo_country).order_by(
+        func.avg(EmailScanResult.risk_score).desc()
+    ).limit(15).all()
+
+    # Phishing rate per country (top 10 by volume)
+    country_phishing = db.session.query(
+        EmailScanResult.geo_country,
+        func.count(EmailScanResult.id),
+        func.sum(func.cast(EmailScanResult.ml_prediction == 'phishing', db.Integer))
+    ).filter(
+        EmailScanResult.geo_country.isnot(None),
+        EmailScanResult.geo_country != ''
+    ).group_by(EmailScanResult.geo_country).order_by(
+        func.count(EmailScanResult.id).desc()
+    ).limit(10).all()
+
+    return jsonify({
+        'by_volume': [{'country': c, 'count': n} for c, n in countries if c],
+        'by_risk': [{'country': c, 'avg_risk': round(float(r), 1)} for c, r in country_risk if c],
+        'phishing_rate': [
+            {'country': c, 'total': int(t), 'phishing': int(p or 0),
+             'rate': round(int(p or 0) / int(t) * 100, 1) if int(t) > 0 else 0}
+            for c, t, p in country_phishing if c
+        ],
+    })
+
+
+@api_bp.route('/threat-intel/auth-trends')
+def threat_intel_auth_trends():
+    """SPF/DKIM/DMARC failure rates over time"""
+    days = request.args.get('days', 30, type=int)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    scans = EmailScanResult.query.filter(
+        EmailScanResult.timestamp >= cutoff
+    ).order_by(EmailScanResult.timestamp.asc()).all()
+
+    # Aggregate auth failures per day
+    auth_by_day = defaultdict(lambda: {'spf_fail': 0, 'dkim_fail': 0, 'dmarc_fail': 0, 'total': 0})
+    for scan in scans:
+        if not scan.full_result:
+            continue
+        try:
+            result = json.loads(scan.full_result)
+            auth = result.get('forensic', {}).get('authentication', {})
+            day = scan.timestamp.date().isoformat() if scan.timestamp else 'unknown'
+            auth_by_day[day]['total'] += 1
+            if auth.get('spf') != 'PASS':
+                auth_by_day[day]['spf_fail'] += 1
+            if auth.get('dkim') != 'PASS':
+                auth_by_day[day]['dkim_fail'] += 1
+            if auth.get('dmarc') != 'PASS':
+                auth_by_day[day]['dmarc_fail'] += 1
+        except Exception:
+            continue
+
+    labels = []
+    spf_rates = []
+    dkim_rates = []
+    dmarc_rates = []
+    today = datetime.utcnow().date()
+    for i in range(days, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        labels.append(d)
+        day_data = auth_by_day[d]
+        total = day_data['total'] or 1
+        spf_rates.append(round(day_data['spf_fail'] / total * 100, 1))
+        dkim_rates.append(round(day_data['dkim_fail'] / total * 100, 1))
+        dmarc_rates.append(round(day_data['dmarc_fail'] / total * 100, 1))
+
+    return jsonify({
+        'labels': labels,
+        'spf_failure_rate': spf_rates,
+        'dkim_failure_rate': dkim_rates,
+        'dmarc_failure_rate': dmarc_rates,
+    })
+
+
+@api_bp.route('/threat-intel/recent')
+def threat_intel_recent():
+    """Recent scan results for the activity feed"""
+    limit = request.args.get('limit', 25, type=int)
+    scans = EmailScanResult.query.order_by(
+        EmailScanResult.timestamp.desc()
+    ).limit(limit).all()
+
+    results = []
+    for s in scans:
+        entry = s.to_dict()
+        # Enrich with forensic summary from JSON blob
+        if s.full_result:
+            try:
+                full = json.loads(s.full_result)
+                entry['from'] = full.get('from', '')
+                entry['subject'] = full.get('subject', '')
+                entry['geo_city'] = full.get('geo', {}).get('city', '')
+                entry['auth_all_pass'] = full.get('forensic', {}).get('authentication', {}).get('all_pass', False)
+            except Exception:
+                pass
+        results.append(entry)
+
+    return jsonify({'scans': results, 'count': len(results)})

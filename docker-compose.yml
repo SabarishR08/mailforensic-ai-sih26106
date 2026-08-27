@@ -1,0 +1,34 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-email-forensics
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-change-me-in-production}
+      - DEBUG_MODE=${DEBUG_MODE:-false}
+      - PORT=5000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - SAFE_BROWSING_API_KEY=${SAFE_BROWSING_API_KEY:-}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY:-}
+    volumes:
+      # Mount trained models (train on Colab, copy here)
+      - ./backend/ml_models:/app/backend/ml_models
+      # Mount GeoLite2 database
+      - ./data:/app/data
+      # Mount Gmail credentials (optional)
+      - ./backend/credentials:/app/backend/credentials
+      # Persist uploads and reports
+      - ./uploads:/app/uploads
+      # Persist SQLite database
+      - ./instance:/app/instance
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
