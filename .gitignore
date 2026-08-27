@@ -5,8 +5,8 @@ __pycache__/
 venv/
 .env
 
-# Models — large binaries excluded, metadata tracked
-backend/ml/models/*.pkl
+# Models — only exclude DistilBERT (268MB) and images
+# .pkl files under ml/models/ are small (~5MB total) and tracked for deployment
 backend/ml/models/distilbert_email_threat/
 backend/ml/models/*.png
 
