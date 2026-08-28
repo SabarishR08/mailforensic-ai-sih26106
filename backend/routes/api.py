@@ -1,11 +1,13 @@
 """General API routes + Threat Intelligence analytics"""
 import json
+import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from sqlalchemy import func, cast, Date
 from backend.models import ThreatLog, EmailScanResult, db
 
+logger = logging.getLogger(__name__)
 api_bp = Blueprint('api', __name__)
 
 
@@ -31,10 +33,12 @@ def geo_threats():
     for s in scans:
         result = json.loads(s.full_result) if s.full_result else {}
         geo = result.get('geo', {})
-        if geo.get('latitude') and geo.get('longitude'):
+        lat = geo.get('latitude')
+        lon = geo.get('longitude')
+        if lat is not None and lon is not None and lat != 0.0 and lon != 0.0:
             points.append({
-                'lat': geo['latitude'],
-                'lon': geo['longitude'],
+                'lat': lat,
+                'lon': lon,
                 'country': geo.get('country', ''),
                 'city': geo.get('city', ''),
                 'risk_score': s.risk_score or 0,
@@ -317,11 +321,13 @@ def threat_map_points():
         forensic = full.get('forensic', {})
         routing = forensic.get('routing', {})
 
-        # Main sender origin point
-        if geo.get('latitude') and geo.get('longitude'):
+        # Main sender origin point — use is not None to handle 0.0 coords
+        lat = geo.get('latitude')
+        lon = geo.get('longitude')
+        if lat is not None and lon is not None and lat != 0.0 and lon != 0.0:
             points.append({
-                'lat': geo['latitude'],
-                'lon': geo['longitude'],
+                'lat': lat,
+                'lon': lon,
                 'type': 'origin',
                 'country': geo.get('country', ''),
                 'country_code': geo.get('country_code', ''),
@@ -344,10 +350,12 @@ def threat_map_points():
         hops = routing.get('hops', [])
         hop_points = []
         for hop in hops:
-            if hop.get('geo', {}).get('latitude') and hop.get('geo', {}).get('longitude'):
+            hlat = hop.get('geo', {}).get('latitude')
+            hlon = hop.get('geo', {}).get('longitude')
+            if hlat is not None and hlon is not None and hlat != 0.0 and hlon != 0.0:
                 hop_points.append({
-                    'lat': hop['geo']['latitude'],
-                    'lon': hop['geo']['longitude'],
+                    'lat': hlat,
+                    'lon': hlon,
                     'ip': hop.get('ip', ''),
                     'country': hop['geo'].get('country', ''),
                     'suspicious': hop.get('suspicious', False),
@@ -361,6 +369,38 @@ def threat_map_points():
             })
 
     return jsonify({'points': points, 'count': len(points)})
+
+
+@api_bp.route('/threat-map/backfill', methods=['POST'])
+def threat_map_backfill():
+    """Re-geolocate scans that have bad/missing geo data"""
+    from backend.services.geo_service import get_geo_service
+    
+    geo_service = get_geo_service()
+    # Find scans with XX geo or missing lat/lon
+    scans = EmailScanResult.query.filter(
+        (EmailScanResult.geo_country == 'XX') | (EmailScanResult.geo_country == '') | (EmailScanResult.geo_country.is_(None))
+    ).all()
+    
+    updated = 0
+    for s in scans:
+        if not s.origin_ip or s.origin_ip.startswith('10.') or s.origin_ip.startswith('192.168.'):
+            continue  # Skip private IPs
+        try:
+            geo_data = geo_service.lookup_ip(s.origin_ip)
+            if geo_data and geo_data.get('country_code') != 'XX':
+                s.geo_country = geo_data.get('country_code', 'XX')
+                # Update the full_result JSON with new geo data
+                if s.full_result:
+                    full = json.loads(s.full_result)
+                    full['geo'] = geo_data
+                    s.full_result = json.dumps(full, default=str)
+                updated += 1
+        except Exception as e:
+            logger.debug(f"Backfill failed for {s.email_id}: {e}")
+    
+    db.session.commit()
+    return jsonify({'updated': updated, 'total_checked': len(scans)})
 
 
 @api_bp.route('/threat-map/stats')
