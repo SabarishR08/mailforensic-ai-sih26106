@@ -101,25 +101,26 @@ class GeoService:
         return result
 
     def _ipapi_lookup(self, ip: str, result: Dict) -> Dict:
-        """Fallback: free ipapi.co lookup (1000 req/day)"""
+        """Fallback: ip-api.com lookup (free, 45 req/min)"""
         import httpx
         try:
             with httpx.Client(timeout=5) as client:
-                resp = client.get(f'https://ipapi.co/{ip}/json/')
+                resp = client.get(f'http://ip-api.com/json/{ip}?fields=status,country,countryCode,city,lat,lon,isp,org,as')
                 if resp.status_code == 200:
                     data = resp.json()
-                    result.update({
-                        'city': data.get('city', 'Unknown'),
-                        'country': data.get('country_name', 'Unknown'),
-                        'country_code': data.get('country_code', 'XX'),
-                        'latitude': data.get('latitude', 0.0),
-                        'longitude': data.get('longitude', 0.0),
-                        'asn': data.get('asn', 'Unknown'),
-                        'org': data.get('org', 'Unknown'),
-                        'source': 'ipapi'
-                    })
+                    if data.get('status') == 'success':
+                        result.update({
+                            'city': data.get('city', 'Unknown'),
+                            'country': data.get('country', 'Unknown'),
+                            'country_code': data.get('countryCode', 'XX'),
+                            'latitude': data.get('lat', 0.0),
+                            'longitude': data.get('lon', 0.0),
+                            'asn': data.get('as', 'Unknown'),
+                            'org': data.get('org', data.get('isp', 'Unknown')),
+                            'source': 'ip-api'
+                        })
         except Exception as e:
-            logger.debug(f"ipapi lookup failed for {ip}: {e}")
+            logger.debug(f"ip-api.com lookup failed for {ip}: {e}")
         return result
 
     def _enrich_asn(self, ip: str, result: Dict) -> Dict:
