@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Threat Map — AI Email Forensics{% endblock %}
-{% block content %}
+{% block extra_head %}
 <style>
-  body { overflow: hidden; }
-  .map-container { display: flex; height: calc(100vh - 56px); }
+  .main-content { padding: 0 !important; margin-left: var(--sidebar-width) !important; overflow: hidden; }
+  .map-wrapper { display: flex; height: calc(100vh - 0px); }
   #map { flex: 1; z-index: 1; }
   .map-sidebar {
     width: 340px; background: #1a1d23; color: #e0e0e0;
@@ -43,11 +43,15 @@
   .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
   .popup-row { font-size: 12px; margin: 3px 0; color: #aaa; }
   .popup-row strong { color: #fff; }
+  .pred-legend { display: flex; gap: 12px; margin: 6px 0; }
+  .pred-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+  .pred-dot { width: 10px; height: 10px; border-radius: 50%; }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
 
-{% block scripts %}
-<div class="map-container">
+{% block content %}
+<div class="map-wrapper">
   <div id="map"></div>
   <div class="map-sidebar">
     <h5><i class="fas fa-globe-americas"></i> THREAT MAP</h5>
@@ -66,18 +70,26 @@
     </div>
 
     <div class="section-divider"></div>
+    <h5><i class="fas fa-circle" style="font-size:8px"></i> Legend</h5>
+    <div class="pred-legend">
+      <div class="pred-legend-item"><div class="pred-dot" style="background:#e74c3c"></div> Phishing</div>
+      <div class="pred-legend-item"><div class="pred-dot" style="background:#2ecc71"></div> Legitimate</div>
+      <div class="pred-legend-item"><div class="pred-dot" style="background:#f39c12"></div> Unknown</div>
+    </div>
+
+    <div class="section-divider"></div>
     <h5><i class="fas fa-layer-group"></i> Layers</h5>
     <div class="layer-toggle">
       <input type="checkbox" id="layer-origin" checked onchange="toggleLayer('origin')">
-      <label for="layer-origin">🔴 Threat Origins</label>
+      <label for="layer-origin">Threat Origins</label>
     </div>
     <div class="layer-toggle">
       <input type="checkbox" id="layer-route" checked onchange="toggleLayer('route')">
-      <label for="layer-route">🔵 Routing Hops</label>
+      <label for="layer-route">Routing Hops</label>
     </div>
     <div class="layer-toggle">
       <input type="checkbox" id="layer-heatmap" onchange="toggleLayer('heatmap')">
-      <label for="layer-heatmap">🟠 Heat Density</label>
+      <label for="layer-heatmap">Heat Density</label>
     </div>
 
     <div class="section-divider"></div>
@@ -107,11 +119,12 @@
     <div class="live-feed" id="live-feed"></div>
   </div>
 </div>
+{% endblock %}
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% block extra_scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // ── Map Setup ──
+  // Map Setup
   const map = L.map('map', {
     center: [20, 0],
     zoom: 2,
@@ -124,24 +137,25 @@
     attribution: '&copy; CartoDB',
   }).addTo(map);
 
-  // ── Layer Groups ──
+  // Layer Groups
   const originLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);
   const heatLayer = L.layerGroup();
   let heatPoints = [];
 
-  // ── State ──
+  // State
   let currentTimeRange = 1;
   let currentRiskFilter = '';
 
-  // ── Prediction Colors (primary coloring) ──
+  // Prediction Colors (primary)
   const predColors = {
     phishing: '#e74c3c',
     legitimate: '#2ecc71',
+    suspicious: '#f39c12',
     unknown: '#f39c12',
   };
 
-  // ── Risk Colors (fallback) ──
+  // Risk Colors (fallback)
   const riskColors = {
     Critical: '#e74c3c',
     High: '#e67e22',
@@ -151,47 +165,38 @@
     Unknown: '#95a5a6',
   };
 
-  // ── Custom Markers ──
+  // Custom Markers colored by prediction
   function createMarker(lat, lon, data) {
-    // Color by prediction: phishing=red, legitimate=green, unknown=yellow
     const color = predColors[data.prediction] || riskColors[data.risk_level] || '#95a5a6';
     const size = data.risk_score > 70 ? 14 : data.risk_score > 40 ? 10 : 7;
 
     const icon = L.divIcon({
       className: '',
-      html: `<div style="
-        width:${size}px; height:${size}px;
-        background:${color}; border: 2px solid ${color}44;
-        border-radius: 50%; box-shadow: 0 0 ${size}px ${color}66;
-      "></div>`,
+      html: '<div style="width:' + size + 'px;height:' + size + 'px;background:' + color + ';border:2px solid ' + color + '44;border-radius:50%;box-shadow:0 0 ' + size + 'px ' + color + '66;"></div>',
       iconSize: [size, size],
       iconAnchor: [size/2, size/2],
     });
 
-    const predLabel = data.prediction || 'unknown';
-    const predBadgeColor = predColors[predLabel] || '#95a5a6';
+    var predLabel = data.prediction || 'unknown';
+    var predBadgeColor = predColors[predLabel] || '#95a5a6';
 
-    const popup = `
-      <div class="popup-title">${data.from || data.email_id || 'Unknown'}</div>
-      <div class="popup-row"><strong>Subject:</strong> ${data.subject || 'N/A'}</div>
-      <div class="popup-row"><strong>Prediction:</strong> <span style="color:${predBadgeColor};font-weight:700;text-transform:uppercase">${predLabel}</span></div>
-      <div class="popup-row"><strong>Location:</strong> ${data.city || '?'}, ${data.country || '?'}</div>
-      <div class="popup-row"><strong>ASN:</strong> ${data.asn || 'N/A'} — ${data.org || ''}</div>
-      <div class="popup-row"><strong>Hosting:</strong> ${data.hosting ? 'Yes ⚠️' : 'No'}</div>
-      <div class="popup-row"><strong>Risk:</strong> <span class="risk-badge risk-${data.risk_level}">${data.risk_level} (${data.risk_score}/100)</span></div>
-      <div class="popup-row"><strong>Auth:</strong> SPF ${data.auth?.spf || '?'} / DKIM ${data.auth?.dkim || '?'} / DMARC ${data.auth?.dmarc || '?'}</div>
-      <div class="popup-row"><strong>Trust Score:</strong> ${data.trust_score || 0}/100</div>
-      <div class="popup-row"><strong>Time:</strong> ${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</div>
-    `;
+    var popup = '<div class="popup-title">' + (data.from || data.email_id || 'Unknown') + '</div>' +
+      '<div class="popup-row"><strong>Subject:</strong> ' + (data.subject || 'N/A') + '</div>' +
+      '<div class="popup-row"><strong>Prediction:</strong> <span style="color:' + predBadgeColor + ';font-weight:700;text-transform:uppercase">' + predLabel + '</span></div>' +
+      '<div class="popup-row"><strong>Location:</strong> ' + (data.city || '?') + ', ' + (data.country || '?') + '</div>' +
+      '<div class="popup-row"><strong>Risk:</strong> <span class="risk-badge risk-' + data.risk_level + '">' + data.risk_level + ' (' + data.risk_score + '/100)</span></div>' +
+      '<div class="popup-row"><strong>Auth:</strong> SPF ' + (data.auth && data.auth.spf ? data.auth.spf : '?') + ' / DKIM ' + (data.auth && data.auth.dkim ? data.auth.dkim : '?') + ' / DMARC ' + (data.auth && data.auth.dmarc ? data.auth.dmarc : '?') + '</div>' +
+      '<div class="popup-row"><strong>Trust:</strong> ' + (data.trust_score || 0) + '/100</div>' +
+      '<div class="popup-row"><strong>Time:</strong> ' + (data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A') + '</div>';
 
-    return L.marker([lat, lon], { icon }).bindPopup(popup, { maxWidth: 320 });
+    return L.marker([lat, lon], { icon: icon }).bindPopup(popup, { maxWidth: 320 });
   }
 
-  // ── Route Polyline ──
+  // Route Polyline
   function createRouteLine(hops) {
     if (hops.length < 2) return null;
-    const coords = hops.map(h => [h.lat, h.lon]);
-    const hasSuspicious = hops.some(h => h.suspicious);
+    var coords = hops.map(function(h) { return [h.lat, h.lon]; });
+    var hasSuspicious = hops.some(function(h) { return h.suspicious; });
 
     return L.polyline(coords, {
       color: hasSuspicious ? '#e74c3c' : '#3498db',
@@ -201,17 +206,15 @@
     });
   }
 
-  // ── Load Data ──
+  // Load Data
   async function loadMapData() {
-    const [pointsRes, statsRes, recentRes] = await Promise.all([
-      fetch(`/api/threat-map/points?days=${currentTimeRange}&risk_level=${currentRiskFilter}`),
-      fetch(`/api/threat-map/stats?days=${currentTimeRange}`),
-      fetch(`/api/threat-map/recent?limit=10`),
-    ]);
+    var pointsRes = await fetch('/api/threat-map/points?days=' + currentTimeRange + '&risk_level=' + currentRiskFilter);
+    var statsRes = await fetch('/api/threat-map/stats?days=' + currentTimeRange);
+    var recentRes = await fetch('/api/threat-map/recent?limit=10');
 
-    const pointsData = await pointsRes.json();
-    const statsData = await statsRes.json();
-    const recentData = await recentRes.json();
+    var pointsData = await pointsRes.json();
+    var statsData = await statsRes.json();
+    var recentData = await recentRes.json();
 
     // Clear layers
     originLayer.clearLayers();
@@ -219,28 +222,14 @@
     heatPoints = [];
 
     // Add points
-    for (const p of pointsData.points) {
+    for (var i = 0; i < pointsData.points.length; i++) {
+      var p = pointsData.points[i];
       if (p.type === 'origin' && p.lat && p.lon) {
         createMarker(p.lat, p.lon, p).addTo(originLayer);
         heatPoints.push([p.lat, p.lon, p.risk_score / 100]);
       } else if (p.type === 'route' && p.hops && p.hops.length > 1) {
-        const line = createRouteLine(p.hops);
+        var line = createRouteLine(p.hops);
         if (line) line.addTo(routeLayer);
-
-        // Add hop markers
-        for (const hop of p.hops) {
-          if (hop.lat && hop.lon) {
-            const hopIcon = L.divIcon({
-              className: '',
-              html: `<div style="width:6px;height:6px;background:#fff3;border:1px solid #fff6;border-radius:50%;"></div>`,
-              iconSize: [6, 6],
-              iconAnchor: [3, 3],
-            });
-            L.marker([hop.lat, hop.lon], { icon: hopIcon })
-              .bindPopup(`<div class="popup-row"><strong>Hop IP:</strong> ${hop.ip}<br><strong>Country:</strong> ${hop.country}</div>`)
-              .addTo(routeLayer);
-          }
-        }
       }
     }
 
@@ -250,31 +239,30 @@
     document.getElementById('stat-countries').textContent = statsData.countries || 0;
 
     // Update country list
-    const countryList = document.getElementById('country-list');
-    const maxCount = statsData.top_countries?.[0]?.count || 1;
-    countryList.innerHTML = (statsData.top_countries || []).slice(0, 10).map(c => `
-      <div class="country-bar">
-        <span class="bar-name">${c.country}</span>
-        <div class="bar"><div class="bar-fill" style="width:${(c.count/maxCount)*100}%;background:${riskColors[c.avg_risk > 50 ? 'High' : 'Medium']}"></div></div>
-        <span class="bar-label">${c.count}</span>
-      </div>
-    `).join('');
+    var countryList = document.getElementById('country-list');
+    var maxCount = (statsData.top_countries && statsData.top_countries[0]) ? statsData.top_countries[0].count : 1;
+    countryList.innerHTML = (statsData.top_countries || []).slice(0, 10).map(function(c) {
+      return '<div class="country-bar">' +
+        '<span class="bar-name">' + c.country + '</span>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + (c.count/maxCount)*100 + '%;background:' + riskColors[c.avg_risk > 50 ? 'High' : 'Medium'] + '"></div></div>' +
+        '<span class="bar-label">' + c.count + '</span></div>';
+    }).join('');
 
     // Update recent feed
-    const feed = document.getElementById('live-feed');
-    feed.innerHTML = (recentData.recent || []).map(r => `
-      <div class="feed-item ${(r.risk_level || '').toLowerCase()}">
-        <div class="feed-from">${r.from || 'Unknown'}</div>
-        <div class="feed-subject">${r.subject || 'No subject'}</div>
-        <div class="feed-meta">
-          ${r.country || '?'} · <span class="risk-badge risk-${r.risk_level}">${r.risk_level}</span>
-          · ${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : ''}
-        </div>
-      </div>
-    `).join('');
+    var feed = document.getElementById('live-feed');
+    feed.innerHTML = (recentData.recent || []).map(function(r) {
+      var predColor = predColors[(r.ml_prediction || '').toLowerCase()] || '#95a5a6';
+      return '<div class="feed-item ' + (r.risk_level || '').toLowerCase() + '">' +
+        '<div class="feed-from">' + (r.from || 'Unknown') + '</div>' +
+        '<div class="feed-subject">' + (r.subject || 'No subject') + '</div>' +
+        '<div class="feed-meta">' +
+          (r.country || '?') + ' &middot; <span class="risk-badge risk-' + r.risk_level + '">' + r.risk_level + '</span>' +
+          ' &middot; ' + (r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '') +
+        '</div></div>';
+    }).join('');
   }
 
-  // ── Layer Toggles ──
+  // Layer Toggles
   function toggleLayer(layer) {
     if (layer === 'origin') {
       map.hasLayer(originLayer) ? map.removeLayer(originLayer) : map.addLayer(originLayer);
@@ -284,14 +272,14 @@
       if (map.hasLayer(heatLayer)) {
         map.removeLayer(heatLayer);
       } else {
-        // Simple circle-based heatmap (no extra library needed)
         heatLayer.clearLayers();
-        for (const [lat, lon, intensity] of heatPoints) {
-          L.circle([lat, lon], {
-            radius: 50000 + intensity * 100000,
+        for (var i = 0; i < heatPoints.length; i++) {
+          var pt = heatPoints[i];
+          L.circle([pt[0], pt[1]], {
+            radius: 50000 + pt[2] * 100000,
             color: '#e67e22',
             fillColor: '#e67e22',
-            fillOpacity: 0.15 + intensity * 0.2,
+            fillOpacity: 0.15 + pt[2] * 0.2,
             weight: 0,
           }).addTo(heatLayer);
         }
@@ -300,23 +288,23 @@
     }
   }
 
-  // ── Time Range ──
+  // Time Range
   function setTimeRange(days, btn) {
     currentTimeRange = days;
-    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
     loadMapData();
   }
 
-  // ── Risk Filter ──
+  // Risk Filter
   function setRiskFilter(level, btn) {
     currentRiskFilter = level;
-    document.querySelectorAll('.risk-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.risk-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
     loadMapData();
   }
 
-  // ── Auto-refresh every 30s ──
+  // Init
   loadMapData();
   setInterval(loadMapData, 30000);
 </script>
