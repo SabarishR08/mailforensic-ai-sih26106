@@ -5,6 +5,7 @@ import threading
 from flask import Blueprint, render_template, request, jsonify
 from flask_socketio import join_room
 from backend.services.gmail_service import fetch_recent_emails
+from backend.services.sample_emails import get_sample_emails
 from backend.services.email_scanner import scan_emails, scan_emails_streaming
 from backend.services.ml_predictor import get_ml_predictor
 from backend.extensions import socketio
@@ -28,7 +29,7 @@ def scan_gmail():
     limit = request.json.get('limit', 5) if request.is_json else 5
     emails = fetch_recent_emails(limit=limit)
     if not emails:
-        return jsonify({'error': 'No emails fetched', 'results': []}), 200
+        return jsonify({'error': 'No emails fetched. Check Gmail credentials.', 'results': []}), 200
 
     loop = asyncio.new_event_loop()
     results = loop.run_until_complete(scan_emails(emails, limit=limit))
@@ -52,7 +53,41 @@ def scan_gmail():
         db.session.add(scan)
     db.session.commit()
 
-    return jsonify({'count': len(results), 'results': results})
+    return jsonify({'count': len(results), 'results': results, 'source': 'gmail'})
+
+
+@email_bp.route('/api/scan/sample', methods=['POST'])
+def scan_sample():
+    """Scan sample/demo emails - no Gmail auth required"""
+    limit = request.json.get('limit', 5) if request.is_json else 5
+    emails = get_sample_emails(limit=limit)
+    
+    if not emails:
+        return jsonify({'error': 'No sample emails available', 'results': []}), 200
+
+    loop = asyncio.new_event_loop()
+    results = loop.run_until_complete(scan_emails(emails, limit=limit))
+    loop.close()
+
+    # Persist results
+    for r in results:
+        risk = r.get('risk_assessment', {})
+        geo = r.get('geo', {})
+        scan = EmailScanResult(
+            email_id=r.get('email_id', ''),
+            ml_prediction=r.get('ml', {}).get('prediction', 'unknown'),
+            ml_confidence=r.get('ml', {}).get('confidence', 0),
+            risk_score=risk.get('risk_score', 0),
+            risk_level=risk.get('risk_level', 'Unknown'),
+            forensic_trust_score=r.get('forensic', {}).get('trust_score', 0),
+            geo_country=geo.get('country_code', ''),
+            origin_ip=r.get('forensic', {}).get('routing', {}).get('origin_ip', ''),
+            full_result=json.dumps(r, default=str),
+        )
+        db.session.add(scan)
+    db.session.commit()
+
+    return jsonify({'count': len(results), 'results': results, 'source': 'sample'})
 
 
 @email_bp.route('/api/scan/text', methods=['POST'])
@@ -88,12 +123,19 @@ def handle_join_demo():
 def handle_demo_scan(data):
     """Handle demo scan request via SocketIO"""
     limit = data.get('limit', 5)
+    use_sample = data.get('use_sample', False)  # New parameter
 
     def run_scan():
-        emails = fetch_recent_emails(limit=limit)
+        if use_sample:
+            emails = get_sample_emails(limit=limit)
+            source = 'sample'
+        else:
+            emails = fetch_recent_emails(limit=limit)
+            source = 'gmail'
+        
         if not emails:
             socketio.emit('scan_error', {
-                'message': 'No emails fetched. Check Gmail credentials.',
+                'message': 'No emails fetched. Check Gmail credentials or use sample data.',
                 'error': 'No emails'
             }, room='demo')
             return

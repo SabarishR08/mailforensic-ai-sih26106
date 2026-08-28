@@ -277,3 +277,176 @@ def threat_intel_recent():
         results.append(entry)
 
     return jsonify({'scans': results, 'count': len(results)})
+
+
+# ---------------------------------------------------------------------------
+# Threat Map API
+# ---------------------------------------------------------------------------
+
+@api_bp.route('/threat-map/points')
+def threat_map_points():
+    """
+    Return geo-tagged threat data for map visualization.
+    Query params: days (int), risk_level (str), threat_type (str)
+    """
+    days = request.args.get('days', 30, type=int)
+    risk_filter = request.args.get('risk_level', '')
+    threat_filter = request.args.get('threat_type', '')
+
+    since = datetime.utcnow() - timedelta(days=days)
+    query = EmailScanResult.query.filter(EmailScanResult.timestamp >= since)
+
+    if risk_filter:
+        query = query.filter(EmailScanResult.risk_level == risk_filter)
+    if threat_filter == 'phishing':
+        query = query.filter(EmailScanResult.ml_prediction == 'phishing')
+    elif threat_filter == 'legitimate':
+        query = query.filter(EmailScanResult.ml_prediction == 'legitimate')
+
+    scans = query.all()
+    points = []
+    for s in scans:
+        if not s.full_result:
+            continue
+        try:
+            full = json.loads(s.full_result)
+        except Exception:
+            continue
+
+        geo = full.get('geo', {})
+        forensic = full.get('forensic', {})
+        routing = forensic.get('routing', {})
+
+        # Main sender origin point
+        if geo.get('latitude') and geo.get('longitude'):
+            points.append({
+                'lat': geo['latitude'],
+                'lon': geo['longitude'],
+                'type': 'origin',
+                'country': geo.get('country', ''),
+                'country_code': geo.get('country_code', ''),
+                'city': geo.get('city', ''),
+                'asn': geo.get('asn', ''),
+                'org': geo.get('org', ''),
+                'hosting': geo.get('is_hosting', False),
+                'risk_score': s.risk_score or 0,
+                'risk_level': s.risk_level or 'Unknown',
+                'prediction': s.ml_prediction or 'unknown',
+                'email_id': s.email_id or '',
+                'from': full.get('from', ''),
+                'subject': full.get('subject', ''),
+                'timestamp': s.timestamp.isoformat() if s.timestamp else '',
+                'auth': forensic.get('authentication', {}),
+                'trust_score': forensic.get('trust_score', 0),
+            })
+
+        # Routing hop points (for polyline trail)
+        hops = routing.get('hops', [])
+        hop_points = []
+        for hop in hops:
+            if hop.get('geo', {}).get('latitude') and hop.get('geo', {}).get('longitude'):
+                hop_points.append({
+                    'lat': hop['geo']['latitude'],
+                    'lon': hop['geo']['longitude'],
+                    'ip': hop.get('ip', ''),
+                    'country': hop['geo'].get('country', ''),
+                    'suspicious': hop.get('suspicious', False),
+                })
+        if hop_points:
+            points.append({
+                'type': 'route',
+                'hops': hop_points,
+                'email_id': s.email_id or '',
+                'risk_level': s.risk_level or 'Unknown',
+            })
+
+    return jsonify({'points': points, 'count': len(points)})
+
+
+@api_bp.route('/threat-map/stats')
+def threat_map_stats():
+    """
+    Aggregated stats for the threat map sidebar.
+    Returns country breakdown, top threats, risk distribution.
+    """
+    days = request.args.get('days', 30, type=int)
+    since = datetime.utcnow() - timedelta(days=days)
+    scans = EmailScanResult.query.filter(
+        EmailScanResult.timestamp >= since
+    ).all()
+
+    country_stats = defaultdict(lambda: {'count': 0, 'phishing': 0, 'total_risk': 0})
+    risk_dist = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0, 'Safe': 0}
+    total = 0
+    geo_count = 0
+
+    for s in scans:
+        total += 1
+        risk_level = s.risk_level or 'Unknown'
+        if risk_level in risk_dist:
+            risk_dist[risk_level] += 1
+
+        if s.full_result:
+            try:
+                full = json.loads(s.full_result)
+                geo = full.get('geo', {})
+                country = geo.get('country', '')
+                if country:
+                    geo_count += 1
+                    country_stats[country]['count'] += 1
+                    if s.ml_prediction == 'phishing':
+                        country_stats[country]['phishing'] += 1
+                    country_stats[country]['total_risk'] += (s.risk_score or 0)
+            except Exception:
+                pass
+
+    # Sort countries by threat count
+    top_countries = sorted(
+        [{'country': k, **v, 'avg_risk': round(v['total_risk'] / max(v['count'], 1), 1)}
+         for k, v in country_stats.items()],
+        key=lambda x: x['count'],
+        reverse=True
+    )[:15]
+
+    return jsonify({
+        'total_scans': total,
+        'geo_tagged': geo_count,
+        'countries': len(country_stats),
+        'risk_distribution': risk_dist,
+        'top_countries': top_countries,
+    })
+
+
+@api_bp.route('/threat-map/recent')
+def threat_map_recent():
+    """
+    Recent geo-tagged threats for the live feed sidebar.
+    """
+    limit = request.args.get('limit', 10, type=int)
+    scans = EmailScanResult.query.filter(
+        EmailScanResult.ml_prediction == 'phishing'
+    ).order_by(
+        EmailScanResult.timestamp.desc()
+    ).limit(limit).all()
+
+    recent = []
+    for s in scans:
+        if not s.full_result:
+            continue
+        try:
+            full = json.loads(s.full_result)
+            geo = full.get('geo', {})
+            recent.append({
+                'email_id': s.email_id or '',
+                'from': full.get('from', ''),
+                'subject': full.get('subject', ''),
+                'country': geo.get('country', ''),
+                'city': geo.get('city', ''),
+                'risk_score': s.risk_score or 0,
+                'risk_level': s.risk_level or 'Unknown',
+                'timestamp': s.timestamp.isoformat() if s.timestamp else '',
+            })
+        except Exception:
+            pass
+
+    return jsonify({'recent': recent, 'count': len(recent)})

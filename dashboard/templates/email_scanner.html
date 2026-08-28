@@ -5,23 +5,68 @@
     <h4 class="mb-4"><i class="fas fa-envelope-open-text"></i> Email Scanner</h4>
 
     <div class="row">
-        <!-- Gmail Scan -->
+        <!-- Gmail Live Scan -->
         <div class="col-md-6">
             <div class="card p-4">
-                <h6><i class="fab fa-google"></i> Gmail Live Scan</h6>
-                <p class="text-muted">Fetch and analyze recent emails from your Gmail inbox.</p>
+                <h6><i class="fab fa-google text-danger"></i> Scan Real Inbox</h6>
+                <p class="text-muted">Connect to your Gmail and analyze recent emails in real-time.</p>
                 <div class="input-group mb-3">
                     <input type="number" id="email-count" class="form-control" value="5" min="1" max="20" placeholder="Number of emails">
-                    <button class="btn btn-primary" onclick="scanGmail()" id="btn-gmail-scan">
-                        <i class="fas fa-scan"></i> Scan Gmail
+                    <button class="btn btn-danger" onclick="scanGmail()" id="btn-gmail-scan">
+                        <i class="fas fa-satellite-dish"></i> Scan Real Inbox
                     </button>
                 </div>
                 <div id="gmail-status" class="text-muted" style="font-size:0.9rem"></div>
+                <small class="text-warning mt-2">
+                    <i class="fas fa-exclamation-triangle"></i> Requires Gmail API credentials
+                </small>
             </div>
         </div>
 
-        <!-- Manual Text Scan -->
+        <!-- Sample Data Scan -->
         <div class="col-md-6">
+            <div class="card p-4">
+                <h6><i class="fas fa-flask text-primary"></i> Test with Sample Data</h6>
+                <p class="text-muted">Scan realistic sample emails including phishing, malware, and legitimate messages.</p>
+                <div class="input-group mb-3">
+                    <input type="number" id="sample-count" class="form-control" value="5" min="1" max="8" placeholder="Number of samples">
+                    <button class="btn btn-primary" onclick="scanSample()" id="btn-sample-scan">
+                        <i class="fas fa-vial"></i> Test with Sample
+                    </button>
+                </div>
+                <div id="sample-status" class="text-muted" style="font-size:0.9rem"></div>
+                <small class="text-success mt-2">
+                    <i class="fas fa-check-circle"></i> No credentials required - works instantly
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-info me-2">Quick Demo</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="scanAllSamples()">
+                            <i class="fas fa-play"></i> Run All Samples (8 emails)
+                        </button>
+                    </div>
+                    <div>
+                        <span class="badge bg-secondary me-2">Manual</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleManualInput()">
+                            <i class="fas fa-keyboard"></i> Paste Custom Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Text Scan (Collapsible) -->
+    <div class="row mt-3" id="manual-section" style="display: none;">
+        <div class="col-12">
             <div class="card p-4">
                 <h6><i class="fas fa-paste"></i> Manual Email Scan</h6>
                 <p class="text-muted">Paste email text (or raw headers) for ML classification.</p>
@@ -40,32 +85,94 @@
 
 {% block extra_scripts %}
 <script>
+// Toggle manual input section
+function toggleManualInput() {
+    var section = document.getElementById('manual-section');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+
+// Scan Gmail (Real Inbox)
 function scanGmail() {
     var count = document.getElementById('email-count').value;
     var status = document.getElementById('gmail-status');
     var btn = document.getElementById('btn-gmail-scan');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
-    status.textContent = 'Fetching emails and running analysis pipeline...';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    status.textContent = 'Connecting to Gmail and fetching emails...';
+    status.className = 'text-info';
 
     fetch('/email/api/scan/gmail', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({limit: parseInt(count)})
     }).then(r => r.json()).then(data => {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-scan"></i> Scan Gmail';
-        status.textContent = 'Scanned ' + data.count + ' emails.';
-        renderResults(data.results);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Scan Real Inbox';
+        
+        if (data.error) {
+            status.textContent = '❌ ' + data.error;
+            status.className = 'text-danger';
+        } else {
+            status.textContent = '✅ Scanned ' + data.count + ' real emails from Gmail';
+            status.className = 'text-success';
+            renderResults(data.results, 'Gmail Live Scan');
+        }
     }).catch(err => {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-scan"></i> Scan Gmail';
-        status.textContent = 'Error: ' + err.message;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Scan Real Inbox';
+        status.textContent = '❌ Error: ' + err.message;
+        status.className = 'text-danger';
     });
 }
 
+// Scan Sample Data
+function scanSample() {
+    var count = document.getElementById('sample-count').value;
+    var status = document.getElementById('sample-status');
+    var btn = document.getElementById('btn-sample-scan');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    status.textContent = 'Analyzing sample emails...';
+    status.className = 'text-info';
+
+    fetch('/email/api/scan/sample', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({limit: parseInt(count)})
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-vial"></i> Test with Sample';
+        
+        if (data.error) {
+            status.textContent = '❌ ' + data.error;
+            status.className = 'text-danger';
+        } else {
+            status.textContent = '✅ Analyzed ' + data.count + ' sample threat emails';
+            status.className = 'text-success';
+            renderResults(data.results, 'Sample Data Test');
+        }
+    }).catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-vial"></i> Test with Sample';
+        status.textContent = '❌ Error: ' + err.message;
+        status.className = 'text-danger';
+    });
+}
+
+// Run all samples
+function scanAllSamples() {
+    document.getElementById('sample-count').value = 8;
+    scanSample();
+}
+
+// Scan custom text
 function scanText() {
     var text = document.getElementById('email-text').value;
     if (!text.trim()) return alert('Please paste some email text first.');
 
     fetch('/email/api/scan/text', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({text: text})
     }).then(r => r.json()).then(data => {
         var html = '<div class="card p-4"><h6>ML Prediction</h6>' +
@@ -76,29 +183,65 @@ function scanText() {
     });
 }
 
-function renderResults(results) {
-    var html = '<div class="card p-4"><h6>Scan Results</h6><table class="table table-sm"><thead><tr>' +
-        '<th>#</th><th>Snippet</th><th>ML</th><th>NLP</th><th>Risk</th><th>Trust</th><th>Geo</th><th></th></tr></thead><tbody>';
+// Render results
+function renderResults(results, title) {
+    if (!results || results.length === 0) {
+        document.getElementById('results-container').innerHTML = 
+            '<div class="card p-4"><p class="text-muted">No results to display</p></div>';
+        return;
+    }
 
-    results.forEach(function(r) {
+    var html = '<div class="card p-4"><h6><i class="fas fa-chart-bar"></i> ' + title + ' Results</h6>';
+    html += '<div class="table-responsive"><table class="table table-sm table-hover">';
+    html += '<thead><tr><th>#</th><th>Preview</th><th>ML Prediction</th><th>Risk Level</th><th>Trust Score</th><th>Source</th></tr></thead><tbody>';
+
+    results.forEach(function(r, idx) {
         var risk = r.risk_assessment || {};
         var ml = r.ml || {};
-        var nlp = r.nlp || {};
         var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
-        html += '<tr>' +
-            '<td>' + r.index + '</td>' +
-            '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (r.snippet || '') + '</td>' +
-            '<td><span class="badge bg-' + (ml.prediction === 'phishing' ? 'danger' : 'success') + '">' + (ml.prediction || '?') + '</span></td>' +
-            '<td>' + (nlp.category || '-') + '</td>' +
-            '<td><span class="badge-risk risk-' + riskLevel + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>' +
-            '<td>' + ((r.forensic || {}).trust_score || '-') + '</td>' +
-            '<td>' + ((r.geo || {}).country_code || '-') + '</td>' +
-            '<td><a href="/forensic/report/' + (r.email_id || '') + '" class="btn btn-sm btn-outline-primary"><i class="fas fa-search"></i></a></td>' +
-            '</tr>';
+        var snippet = (r.snippet || '').substring(0, 80) + '...';
+        
+        // Determine source icon
+        var sourceIcon = r.email_id && r.email_id.startsWith('sample_') ? 
+            '<i class="fas fa-flask text-primary"></i>' : 
+            '<i class="fab fa-google text-danger"></i>';
+
+        html += '<tr>';
+        html += '<td>' + (idx + 1) + '</td>';
+        html += '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + snippet + '</td>';
+        html += '<td><span class="badge bg-' + (ml.prediction === 'phishing' ? 'danger' : 'success') + '">' + (ml.prediction || '?') + '</span></td>';
+        html += '<td><span class="badge bg-' + getRiskBadgeClass(riskLevel) + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>';
+        html += '<td>' + ((r.forensic || {}).trust_score || '-') + '%</td>';
+        html += '<td>' + sourceIcon + '</td>';
+        html += '</tr>';
     });
 
     html += '</tbody></table></div>';
+    
+    // Summary stats
+    var phishingCount = results.filter(r => r.ml && r.ml.prediction === 'phishing').length;
+    var legitCount = results.filter(r => r.ml && r.ml.prediction === 'legitimate').length;
+    
+    html += '<div class="mt-3">';
+    html += '<span class="badge bg-danger me-2">' + phishingCount + ' Phishing</span>';
+    html += '<span class="badge bg-success me-2">' + legitCount + ' Legitimate</span>';
+    html += '<span class="badge bg-secondary">' + results.length + ' Total</span>';
+    html += '</div>';
+    html += '</div>';
+    
     document.getElementById('results-container').innerHTML = html;
+}
+
+// Helper: Get risk badge class
+function getRiskBadgeClass(level) {
+    var classes = {
+        'critical': 'danger',
+        'high': 'warning',
+        'medium': 'info',
+        'low': 'success',
+        'safe': 'secondary'
+    };
+    return classes[level] || 'secondary';
 }
 </script>
 {% endblock %}

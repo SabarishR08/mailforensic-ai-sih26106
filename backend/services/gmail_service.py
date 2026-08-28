@@ -1,15 +1,18 @@
 """
 Gmail API Service
 OAuth2 authentication and email fetching via Gmail API
+Supports both local pickle auth and env var credentials for deployment
 """
 
 import os
+import json
 import pickle
 import base64
 import logging
 from pathlib import Path
 from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
@@ -24,14 +27,49 @@ logger = logging.getLogger(__name__)
 
 
 def authenticate_gmail():
+    """
+    Authenticate Gmail using env vars (for deployment) or local files.
+    
+    Environment Variables:
+        GMAIL_CREDENTIALS_JSON: Full credentials.json content as string
+        GMAIL_REFRESH_TOKEN: OAuth2 refresh token
+    """
     creds = None
+    
+    # Method 1: Environment variables (for deployment)
+    credentials_json = os.getenv('GMAIL_CREDENTIALS_JSON')
+    refresh_token = os.getenv('GMAIL_REFRESH_TOKEN')
+    
+    if credentials_json and refresh_token:
+        try:
+            client_secrets = json.loads(credentials_json)
+            client_info = client_secrets.get('installed', client_secrets.get('web', {}))
+            
+            creds = Credentials(
+                token=None,  # Will be refreshed
+                refresh_token=refresh_token,
+                token_uri=client_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
+                client_id=client_info.get('client_id'),
+                client_secret=client_info.get('client_secret'),
+                scopes=SCOPES
+            )
+            creds.refresh(Request())
+            logger.info("Authenticated via environment variables")
+            return build('gmail', 'v1', credentials=creds)
+            
+        except Exception as e:
+            logger.error(f"Env var auth failed: {e}")
+            # Fall through to local methods
+    
+    # Method 2: Local pickle file (for development)
     if TOKEN_PATH.exists():
         try:
             with open(TOKEN_PATH, 'rb') as token:
                 creds = pickle.load(token)
         except Exception:
             creds = None
-
+    
+    # Method 3: Interactive OAuth flow (first time local setup)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
@@ -40,10 +78,15 @@ def authenticate_gmail():
                 creds = None
         else:
             if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(f"Gmail credentials not found at {CREDENTIALS_PATH}")
+                raise FileNotFoundError(
+                    "Gmail credentials not found. Set GMAIL_CREDENTIALS_JSON and "
+                    "GMAIL_REFRESH_TOKEN environment variables, or place credentials.json "
+                    f"at {CREDENTIALS_PATH}"
+                )
             flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_PATH), SCOPES)
             creds = flow.run_local_server(port=0)
-
+        
+        # Save token for local development
         TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(TOKEN_PATH, 'wb') as token:
             pickle.dump(creds, token)

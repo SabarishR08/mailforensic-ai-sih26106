@@ -1,23 +1,18 @@
-# Render deployment config — SIH26106 Email Threat Detection Platform
-# Free tier: 512MB RAM, spins down after inactivity
-# Uses XGB+LGB ensemble only (no torch/transformers — that's 97.5% accuracy)
 services:
   - type: web
-    name: sih26106-email-forensics
-    runtime: python
-    plan: free
+    name: ai-email-forensics
+    env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m backend.app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT backend.app:create_app()
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.0"
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: DEBUG_MODE
-        value: "false"
-      - key: PORT
-        value: "10000"
-      # API keys — set these in Render dashboard, not here
+        value: false
+      - key: GMAIL_CREDENTIALS_JSON
+        sync: false  # Set manually in Render dashboard
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false  # Set manually in Render dashboard
       - key: GEMINI_API_KEY
         sync: false
       - key: VIRUSTOTAL_API_KEY
@@ -26,5 +21,5 @@ services:
         sync: false
       - key: ABUSEIPDB_API_KEY
         sync: false
-    healthCheckPath: /api/health
+    healthCheckPath: /
     autoDeploy: true
