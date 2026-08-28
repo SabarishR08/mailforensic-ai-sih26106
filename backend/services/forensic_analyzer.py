@@ -40,6 +40,34 @@ class ForensicAnalyzer:
         received_headers = msg.get_all('Received', [])
         routing_analysis = self._analyze_routing(received_headers, geo_service)
 
+        # Fallback: extract origin IP from X-Originating-IP if routing didn't find one
+        if not routing_analysis.get('origin_ip'):
+            x_orig_ip = msg.get('X-Originating-IP', '').strip('[]')
+            if x_orig_ip and not self._is_private_ip(x_orig_ip):
+                routing_analysis['origin_ip'] = x_orig_ip
+                # Add as a hop
+                hop = {'hop_number': 0, 'ip': x_orig_ip, 'from_host': 'X-Originating-IP', 'by_host': '', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': []}
+                if geo_service:
+                    try:
+                        geo_data = geo_service.lookup_ip(x_orig_ip)
+                        hop['geo'] = {'city': geo_data.get('city'), 'country': geo_data.get('country'), 'country_code': geo_data.get('country_code'), 'org': geo_data.get('org'), 'is_hosting': geo_data.get('is_hosting'), 'risk_score': geo_data.get('risk_score')}
+                    except Exception:
+                        pass
+                routing_analysis['hops'].insert(0, hop)
+
+        # Fallback: resolve From domain to IP if still no origin IP
+        if not routing_analysis.get('origin_ip') and from_addr and '@' in from_addr and geo_service:
+            from_domain = from_addr.split('@')[-1]
+            try:
+                geo_result = geo_service.lookup_domain(from_domain)
+                if geo_result and geo_result.get('ip'):
+                    routing_analysis['origin_ip'] = geo_result['ip']
+                    hop = {'hop_number': 0, 'ip': geo_result['ip'], 'from_host': from_domain, 'by_host': 'DNS-resolved', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': [],
+                           'geo': {'city': geo_result.get('city'), 'country': geo_result.get('country'), 'country_code': geo_result.get('country_code'), 'org': geo_result.get('org'), 'is_hosting': geo_result.get('is_hosting'), 'risk_score': geo_result.get('risk_score')}}
+                    routing_analysis['hops'].insert(0, hop)
+            except Exception:
+                pass
+
         mismatches = self._detect_mismatches(from_addr, reply_to, return_path)
 
         analysis = {

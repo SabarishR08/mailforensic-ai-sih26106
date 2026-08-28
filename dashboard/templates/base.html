@@ -45,7 +45,7 @@
             <a class="nav-link {% if 'forensic' in request.endpoint|default('') %}active{% endif %}" href="/forensic/scan">
                 <i class="fas fa-microscope"></i> Forensic Analysis
             </a>
-            <a class="nav-link" href="/dashboard#geo-map">
+            <a class="nav-link {% if 'threat_map' in request.endpoint|default('') %}active{% endif %}" href="/threat-map">
                 <i class="fas fa-globe"></i> Threat Map
             </a>
             <a class="nav-link {% if 'threat_intel' in request.endpoint|default('') %}active{% endif %}" href="/dashboard/threat-intel">
