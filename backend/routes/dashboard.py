@@ -17,6 +17,12 @@ def dashboard():
     return render_template('dashboard.html', threats=recent_threats, scans=recent_scans, stats=stats)
 
 
+@dashboard_bp.route('/threat-map')
+def threat_map():
+    """Threat Map — Leaflet visualization of email threat origins"""
+    return render_template('threat_map.html')
+
+
 @dashboard_bp.route('/dashboard/threat-intel')
 def threat_intel():
     """Threat Intelligence dashboard with aggregated trends and charts"""

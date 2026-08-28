@@ -134,7 +134,14 @@
   let currentTimeRange = 1;
   let currentRiskFilter = '';
 
-  // ── Risk Colors ──
+  // ── Prediction Colors (primary coloring) ──
+  const predColors = {
+    phishing: '#e74c3c',
+    legitimate: '#2ecc71',
+    unknown: '#f39c12',
+  };
+
+  // ── Risk Colors (fallback) ──
   const riskColors = {
     Critical: '#e74c3c',
     High: '#e67e22',
@@ -146,7 +153,8 @@
 
   // ── Custom Markers ──
   function createMarker(lat, lon, data) {
-    const color = riskColors[data.risk_level] || '#95a5a6';
+    // Color by prediction: phishing=red, legitimate=green, unknown=yellow
+    const color = predColors[data.prediction] || riskColors[data.risk_level] || '#95a5a6';
     const size = data.risk_score > 70 ? 14 : data.risk_score > 40 ? 10 : 7;
 
     const icon = L.divIcon({
@@ -160,9 +168,13 @@
       iconAnchor: [size/2, size/2],
     });
 
+    const predLabel = data.prediction || 'unknown';
+    const predBadgeColor = predColors[predLabel] || '#95a5a6';
+
     const popup = `
       <div class="popup-title">${data.from || data.email_id || 'Unknown'}</div>
       <div class="popup-row"><strong>Subject:</strong> ${data.subject || 'N/A'}</div>
+      <div class="popup-row"><strong>Prediction:</strong> <span style="color:${predBadgeColor};font-weight:700;text-transform:uppercase">${predLabel}</span></div>
       <div class="popup-row"><strong>Location:</strong> ${data.city || '?'}, ${data.country || '?'}</div>
       <div class="popup-row"><strong>ASN:</strong> ${data.asn || 'N/A'} — ${data.org || ''}</div>
       <div class="popup-row"><strong>Hosting:</strong> ${data.hosting ? 'Yes ⚠️' : 'No'}</div>
