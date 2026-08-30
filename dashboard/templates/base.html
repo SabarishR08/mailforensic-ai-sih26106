@@ -8,25 +8,48 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
     <style>
-        :root { --sidebar-width: 250px; --primary: #1a237e; --accent: #283593; }
-        body { background: #f0f2f5; font-family: 'Segoe UI', system-ui, sans-serif; }
+        :root { --sidebar-width: 250px; --primary: #1a237e; --accent: #283593; --glow: #00e5ff; }
+        * { box-sizing: border-box; }
+        body { background: #0f1117; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
         .sidebar {
             position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--accent) 100%);
+            background: linear-gradient(180deg, #0d1b2a 0%, #1b2838 100%);
             color: white; padding: 20px 0; z-index: 100;
+            border-right: 1px solid rgba(0,229,255,0.1);
         }
-        .sidebar .brand { padding: 0 20px 30px; font-size: 1.3rem; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.15); }
-        .sidebar .nav-link { color: rgba(255,255,255,0.8); padding: 12px 20px; font-size: 0.95rem; transition: all 0.2s; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
-        .sidebar .nav-link i { width: 24px; margin-right: 10px; text-align: center; }
-        .main-content { margin-left: var(--sidebar-width); padding: 30px; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .stat-card { padding: 24px; text-align: center; }
-        .stat-card .number { font-size: 2rem; font-weight: 700; color: var(--primary); }
-        .stat-card .label { color: #666; font-size: 0.85rem; margin-top: 4px; }
-        .risk-critical { color: #d32f2f; } .risk-high { color: #f57c00; }
-        .risk-medium { color: #fbc02d; } .risk-low { color: #388e3c; } .risk-safe { color: #1976d2; }
+        .sidebar .brand { padding: 0 20px 24px; font-size: 1.2rem; font-weight: 700; border-bottom: 1px solid rgba(0,229,255,0.15); }
+        .sidebar .brand i { color: var(--glow); margin-right: 8px; }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.65); padding: 11px 20px; font-size: 0.92rem; transition: all 0.2s;
+            border-left: 3px solid transparent; text-decoration: none; display: block;
+        }
+        .sidebar .nav-link:hover { color: #fff; background: rgba(0,229,255,0.05); border-left-color: rgba(0,229,255,0.3); }
+        .sidebar .nav-link.active { color: #fff; background: rgba(0,229,255,0.08); border-left-color: var(--glow); font-weight: 600; }
+        .sidebar .nav-link i { width: 22px; margin-right: 10px; text-align: center; font-size: 0.9rem; }
+        .sidebar .nav-link.active i { color: var(--glow); }
+        .main-content { margin-left: var(--sidebar-width); padding: 24px 28px; min-height: 100vh; }
+        .card {
+            background: #1a1d27; border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.3); color: #e0e0e0;
+        }
+        .card h6 { color: #fff; }
+        .text-muted { color: #8892a4 !important; }
+        .stat-card { padding: 24px; text-align: center; background: #1a1d27; border-radius: 12px; }
+        .stat-card .number { font-size: 2rem; font-weight: 700; color: var(--glow); }
+        .stat-card .label { color: #8892a4; font-size: 0.85rem; margin-top: 4px; }
+        .risk-critical { color: #ef5350; } .risk-high { color: #ff9800; }
+        .risk-medium { color: #ffeb3b; } .risk-low { color: #66bb6a; } .risk-safe { color: #42a5f5; }
         .badge-risk { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .table { color: #e0e0e0; }
+        .table thead th { border-color: rgba(255,255,255,0.08); color: #8892a4; }
+        .table tbody td { border-color: rgba(255,255,255,0.05); }
+        .table-hover tbody tr:hover { background: rgba(0,229,255,0.04); }
+        .form-control { background: #12141c; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; }
+        .form-control:focus { background: #12141c; border-color: var(--glow); color: #fff; box-shadow: 0 0 0 0.2rem rgba(0,229,255,0.15); }
+        .btn-outline-secondary { border-color: rgba(255,255,255,0.15); color: #ccc; }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        h4, h5, h6 { color: #fff; }
+        textarea.form-control { background: #12141c; border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

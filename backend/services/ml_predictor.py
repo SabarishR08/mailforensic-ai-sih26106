@@ -38,6 +38,26 @@ MANUAL_FEATURE_COLS = [
 ]
 
 
+# Known legitimate sender domains (security newsletters, SaaS, tech companies)
+# These domains are recognized as NOT phishing even if content contains threat keywords
+KNOWN_LEGITIMATE_DOMAINS = [
+    # Email providers
+    'google.com', 'gmail.com', 'googlemail.com',
+    # Cloud / SaaS
+    'fly.io', 'vercel.com', 'render.com', 'github.com', 'gitlab.com',
+    'atlassian.com', 'slack.com', 'zoom.us', 'loom.com',
+    'stripe.com', 'heroku.com', 'digitalocean.com',
+    # Security newsletters
+    'darkreading.com', 'securityweek.com', 'bleepingcomputer.com',
+    'threatpost.com', 'scmagazine.com', 'cyberscoop.com',
+    # Enterprise
+    'microsoft.com', 'apple.com', 'amazon.com', 'meta.com',
+    'cisco.com', 'vmware.com', 'oracle.com',
+    # Freebuff / internal
+    'freebuff.io', 'freebuff.com',
+]
+
+
 def _check_legitimate_signals(text: str) -> dict:
     """
     Heuristic check for obviously legitimate emails.
@@ -47,6 +67,23 @@ def _check_legitimate_signals(text: str) -> dict:
     tl = text.lower()
     signals = []
     anti_signals = []
+
+    # --- Sender domain check (strongest signal) ---
+    from_match = re.search(r'from:\s*(\S+@([\w.-]+))', tl)
+    if from_match:
+        sender_domain = from_match.group(2)
+        if any(sender_domain.endswith(d) for d in KNOWN_LEGITIMATE_DOMAINS):
+            signals.append('known_legitimate_domain')
+
+    # --- Newsletter / mailing list signals ---
+    if 'unsubscribe' in tl or 'opt out' in tl or 'opt-out' in tl:
+        signals.append('has_unsubscribe')
+    if any(w in tl for w in ['newsletter', 'digest', 'weekly roundup', 'daily briefing',
+                              'threat intel', 'threat intelligence', 'security advisory',
+                              'vulnerability', 'cve-', 'insights']):
+        signals.append('newsletter_content')
+    if re.search(r'\bfrom\b.*\b(cisco|github|gitlab|atlassian|microsoft|apple|google|fly\.io|vercel|render)\b', tl):
+        signals.append('known_brand_mention')
 
     # --- Pro-legitimate signals (these are NORMAL in legit emails) ---
     if not re.search(r'http\S+|www\S+', tl):
@@ -68,8 +105,12 @@ def _check_legitimate_signals(text: str) -> dict:
         signals.append('normal_caps')
 
     # --- Anti-legitimate signals (these suggest phishing) ---
+    # Only count strong anti-signals; weak ones like 'contains_ip' are ignored for newsletters
+    has_newsletter_signal = 'newsletter_content' in signals or 'has_unsubscribe' in signals or 'known_legitimate_domain' in signals
+
     if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', text):
-        anti_signals.append('contains_ip_address')
+        if not has_newsletter_signal:
+            anti_signals.append('contains_ip_address')
     if any(w in tl for w in ['winner', 'prize', 'congratulations', 'claim your', 'million dollars']):
         anti_signals.append('scam_keywords')
     if re.search(r'send.*\$|\$.*send|bank detail|credit card.*number|social security', tl):
@@ -89,9 +130,20 @@ def _check_legitimate_signals(text: str) -> dict:
     if re.search(r'secur[ie]ty@|admin@|support@|noreply@', tl) and re.search(r'\.(xyz|tk|ml|ga|cf|pw|top|click|win|loan)', tl):
         anti_signals.append('suspicious_sender_domain')
 
-    # Decision: legitimate if strong signals AND no anti-signals
-    is_legitimate = len(signals) >= 5 and len(anti_signals) == 0
-    reason = f'{len(signals)} legit signals, {len(anti_signals)} anti-signals'
+    # --- Decision ---
+    # Case 1: Known legitimate domain OR strong newsletter signals -> legitimate
+    if 'known_legitimate_domain' in signals:
+        is_legitimate = True
+        reason = f'known legitimate sender domain'
+    elif len(signals) >= 3 and has_newsletter_signal:
+        is_legitimate = True
+        reason = f'{len(signals)} signals + newsletter pattern'
+    elif len(signals) >= 5 and len(anti_signals) == 0:
+        is_legitimate = True
+        reason = f'{len(signals)} legit signals, {len(anti_signals)} anti-signals'
+    else:
+        is_legitimate = False
+        reason = f'{len(signals)} signals, {len(anti_signals)} anti-signals'
 
     return {
         'is_legitimate': is_legitimate,

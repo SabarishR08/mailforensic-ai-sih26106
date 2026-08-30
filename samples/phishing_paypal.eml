@@ -1,0 +1,46 @@
+From: security@paypa1-alerts.com
+To: victim@example.com
+Subject: URGENT: Your PayPal Account Has Been Limited!
+Date: Mon, 25 Aug 2026 10:30:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+X-Mailer: PHPMailer 6.1.4
+X-Originating-IP: 185.220.101.34
+Received: from mail.evil-server.ru (185.220.101.34)
+	by mx.gmail.com with ESMTP id a123b456
+	for <victim@example.com>; Mon, 25 Aug 2026 10:30:02 -0500 (CDT)
+Received: from localhost (mail.evil-server.ru [185.220.101.34])
+	by mail.evil-server.ru (8.14.4/8.14.4) with ESMTP id 7R7U32001234
+	for <victim@example.com>; Mon, 25 Aug 2026 17:30:01 +0200
+DKIM-Signature: v=1; a=rsa-sha256; d=paypa1-alerts.com; s=selector1;
+	bh=FakeBase64Hash=;
+	h=From:To:Subject:Date:From:Subject;
+	b=FakeSignature
+Return-Path: <bounce@mail.evil-server.ru>
+Message-ID: <abc123def456@paypa1-alerts.com>
+
+Dear Valued Customer,
+
+We have detected unusual activity on your PayPal account. Your account has been temporarily limited due to multiple sign-in attempts from an unrecognized device in Moscow, Russia.
+
+To restore full access to your account, please verify your identity within 24 hours or your account will be permanently suspended.
+
+Click the link below to verify your account:
+http://185.220.101.34/paypal-secure/verify?id=38291&token=a8f3k2m1
+
+You will need to confirm:
+- Your full name
+- Credit card number
+- PayPal password
+- Social Security Number
+
+This is a mandatory security measure. Failure to verify will result in permanent account closure and potential legal action.
+
+Thank you for your immediate attention.
+
+PayPal Security Team
+PayPal, Inc.
+2211 North First Street, San Jose, CA 95131
+
+If you believe this is an error, contact us at security@paypa1-alerts.com

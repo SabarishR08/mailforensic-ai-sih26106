@@ -1,7 +1,10 @@
 """Email scanning routes + live demo mode"""
 import json
 import asyncio
+import logging
 import threading
+from datetime import datetime
+from pathlib import Path
 from flask import Blueprint, render_template, request, jsonify
 from flask_socketio import join_room
 from backend.services.gmail_service import fetch_recent_emails
@@ -11,7 +14,43 @@ from backend.services.ml_predictor import get_ml_predictor
 from backend.extensions import socketio
 from backend.models import db, EmailScanResult
 
+logger = logging.getLogger(__name__)
 email_bp = Blueprint('email', __name__)
+
+# Analysis log file
+LOG_DIR = Path(__file__).parent.parent / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / 'analysis_log.jsonl'
+
+
+def log_analysis(result, source='unknown'):
+    """Append a detailed analysis log entry"""
+    entry = {
+        'timestamp': datetime.utcnow().isoformat(),
+        'source': source,
+        'email_id': result.get('email_id', ''),
+        'ml_prediction': result.get('ml', {}).get('prediction', 'unknown'),
+        'ml_confidence': result.get('ml', {}).get('confidence', 0),
+        'risk_score': result.get('risk_assessment', {}).get('risk_score', 0),
+        'risk_level': result.get('risk_assessment', {}).get('risk_level', 'Unknown'),
+        'trust_score': result.get('forensic', {}).get('trust_score', 0),
+        'origin_ip': result.get('forensic', {}).get('routing', {}).get('origin_ip'),
+        'x_originating_ip': result.get('forensic', {}).get('x_originating_ip'),
+        'hop_count': result.get('forensic', {}).get('routing', {}).get('hop_count', 0),
+        'geo_country': result.get('geo', {}).get('country_code', 'XX'),
+        'geo_city': result.get('geo', {}).get('city', 'Unknown'),
+        'geo_lat': result.get('geo', {}).get('latitude'),
+        'geo_lon': result.get('geo', {}).get('longitude'),
+        'geo_source': result.get('geo', {}).get('source', 'unknown'),
+        'geo_org': result.get('geo', {}).get('org', 'Unknown'),
+        'spf': result.get('forensic', {}).get('authentication', {}).get('spf', 'MISSING'),
+        'dkim': result.get('forensic', {}).get('authentication', {}).get('dkim', 'MISSING'),
+        'dmarc': result.get('forensic', {}).get('authentication', {}).get('dmarc', 'MISSING'),
+        'mismatch_count': result.get('forensic', {}).get('mismatch_count', 0),
+        'urls_checked': result.get('urls_checked', 0),
+        'snippet': result.get('snippet', '')[:200],
+    }
+    return entry
 
 
 @email_bp.route('/scan')
@@ -35,7 +74,7 @@ def scan_gmail():
     results = loop.run_until_complete(scan_emails(emails, limit=limit))
     loop.close()
 
-    # Persist results
+    # Persist results and log
     for r in results:
         risk = r.get('risk_assessment', {})
         geo = r.get('geo', {})
@@ -51,6 +90,7 @@ def scan_gmail():
             full_result=json.dumps(r, default=str),
         )
         db.session.add(scan)
+        log_analysis(r, source='gmail')
     db.session.commit()
 
     return jsonify({'count': len(results), 'results': results, 'source': 'gmail'})
@@ -69,7 +109,7 @@ def scan_sample():
     results = loop.run_until_complete(scan_emails(emails, limit=limit))
     loop.close()
 
-    # Persist results
+    # Persist results and log
     for r in results:
         risk = r.get('risk_assessment', {})
         geo = r.get('geo', {})
@@ -85,6 +125,7 @@ def scan_sample():
             full_result=json.dumps(r, default=str),
         )
         db.session.add(scan)
+        log_analysis(r, source='sample')
     db.session.commit()
 
     return jsonify({'count': len(results), 'results': results, 'source': 'sample'})
@@ -104,6 +145,62 @@ def scan_text():
         'confidence': round(confidence, 4),
         'model_loaded': predictor.is_email_model_loaded(),
     })
+
+
+@email_bp.route('/api/logs')
+def get_logs():
+    """Return recent analysis logs from SQLite DB"""
+    limit = request.args.get('limit', 50, type=int)
+    scans = EmailScanResult.query.order_by(EmailScanResult.timestamp.desc()).limit(limit).all()
+    logs = []
+    for s in scans:
+        full = json.loads(s.full_result) if s.full_result else {}
+        geo = full.get('geo', {})
+        logs.append({
+            'id': s.id,
+            'timestamp': s.timestamp.isoformat() if s.timestamp else None,
+            'email_id': s.email_id,
+            'ml_prediction': s.ml_prediction,
+            'ml_confidence': s.ml_confidence,
+            'risk_score': s.risk_score,
+            'risk_level': s.risk_level,
+            'trust_score': s.forensic_trust_score,
+            'geo_country': geo.get('country_code', s.geo_country or ''),
+            'geo_city': geo.get('city', ''),
+            'origin_ip': s.origin_ip or '',
+            'source': 'gmail' if not s.email_id.startswith('sample_') else 'sample',
+        })
+    return jsonify({'logs': logs, 'count': len(logs)})
+
+
+@email_bp.route('/api/scan/backfill', methods=['POST'])
+def backfill_geo():
+    """Re-geolocate all scans with bad geo data"""
+    from backend.services.geo_service import get_geo_service
+    geo_service = get_geo_service()
+    
+    scans = EmailScanResult.query.filter(
+        (EmailScanResult.geo_country == 'XX') | (EmailScanResult.geo_country == '') | (EmailScanResult.geo_country.is_(None))
+    ).all()
+    
+    updated = 0
+    for s in scans:
+        if not s.origin_ip or s.origin_ip.startswith('10.') or s.origin_ip.startswith('192.168.'):
+            continue
+        try:
+            geo_data = geo_service.lookup_ip(s.origin_ip)
+            if geo_data and geo_data.get('country_code') != 'XX':
+                s.geo_country = geo_data.get('country_code', 'XX')
+                if s.full_result:
+                    full = json.loads(s.full_result)
+                    full['geo'] = geo_data
+                    s.full_result = json.dumps(full, default=str)
+                updated += 1
+        except Exception:
+            pass
+    
+    db.session.commit()
+    return jsonify({'updated': updated, 'total_checked': len(scans)})
 
 
 # --- SocketIO Demo Events ---

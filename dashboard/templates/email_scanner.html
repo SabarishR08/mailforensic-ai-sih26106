@@ -11,7 +11,7 @@
                 <h6><i class="fab fa-google text-danger"></i> Scan Real Inbox</h6>
                 <p class="text-muted">Connect to your Gmail and analyze recent emails in real-time.</p>
                 <div class="input-group mb-3">
-                    <input type="number" id="email-count" class="form-control" value="5" min="1" max="20" placeholder="Number of emails">
+                    <input type="number" id="email-count" class="form-control" value="5" min="1" max="25" placeholder="Number of emails">
                     <button class="btn btn-danger" onclick="scanGmail()" id="btn-gmail-scan">
                         <i class="fas fa-satellite-dish"></i> Scan Real Inbox
                     </button>
@@ -36,7 +36,7 @@
                 </div>
                 <div id="sample-status" class="text-muted" style="font-size:0.9rem"></div>
                 <small class="text-success mt-2">
-                    <i class="fas fa-check-circle"></i> No credentials required - works instantly
+                    <i class="fas fa-check-circle"></i> No credentials required — works instantly
                 </small>
             </div>
         </div>
@@ -46,17 +46,20 @@
     <div class="row mt-3">
         <div class="col-12">
             <div class="card p-3">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <span class="badge bg-info me-2">Quick Demo</span>
                         <button class="btn btn-sm btn-outline-secondary" onclick="scanAllSamples()">
-                            <i class="fas fa-play"></i> Run All Samples (8 emails)
+                            <i class="fas fa-play"></i> Run All Samples (8)
                         </button>
                     </div>
                     <div>
                         <span class="badge bg-secondary me-2">Manual</span>
                         <button class="btn btn-sm btn-outline-secondary" onclick="toggleManualInput()">
                             <i class="fas fa-keyboard"></i> Paste Custom Email
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleUploadInput()">
+                            <i class="fas fa-upload"></i> Upload .eml File
                         </button>
                     </div>
                 </div>
@@ -69,11 +72,77 @@
         <div class="col-12">
             <div class="card p-4">
                 <h6><i class="fas fa-paste"></i> Manual Email Scan</h6>
-                <p class="text-muted">Paste email text (or raw headers) for ML classification.</p>
-                <textarea id="email-text" class="form-control mb-3" rows="6" placeholder="Paste email text here..."></textarea>
-                <button class="btn btn-success" onclick="scanText()">
-                    <i class="fas fa-brain"></i> Analyze with ML
-                </button>
+                <p class="text-muted">Paste full email text (headers + body) for ML classification and forensic analysis.</p>
+
+                <!-- Pre-built sample email buttons -->
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-2"><i class="fas fa-magic"></i> Quick Insert — Pre-built Emails:</small>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_statement')">
+                            <i class="fas fa-check-circle"></i> Legit: Monthly Statement
+                        </button>
+                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_application')">
+                            <i class="fas fa-check-circle"></i> Legit: Job Application
+                        </button>
+                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_welcome')">
+                            <i class="fas fa-check-circle"></i> Legit: Welcome Email
+                        </button>
+                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_paypal')">
+                            <i class="fas fa-exclamation-triangle"></i> Phishing: PayPal Alert
+                        </button>
+                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_bank')">
+                            <i class="fas fa-exclamation-triangle"></i> Phishing: Bank OTP
+                        </button>
+                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_prize')">
+                            <i class="fas fa-exclamation-triangle"></i> Phishing: Prize Won
+                        </button>
+                        <button class="btn btn-sm" style="background:#e65100;color:#fff;border:1px solid #ef6c00" onclick="insertSample('suspicious_bec')">
+                            <i class="fas fa-exclamation-circle"></i> Suspicious: CEO Wire
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="email-text" class="form-control mb-3" rows="18" style="min-height:300px;font-size:0.9rem;font-family:'Courier New',monospace" placeholder="Paste full email here (headers + body)...
+
+Example:
+From: security@paypa1-alerts.com
+Subject: URGENT: Your Account Has Been Limited!
+Date: Mon, 25 Aug 2026 10:30:00 +0000
+Received: from mail.evil-server.ru (185.220.101.34) by mx.gmail.com
+
+Dear Valued Customer,
+
+We have detected unusual activity on your account...
+"></textarea>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" onclick="scanText()">
+                        <i class="fas fa-brain"></i> Analyze with ML
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearManualInput()">
+                        <i class="fas fa-eraser"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload .eml File (Collapsible) -->
+    <div class="row mt-3" id="upload-section" style="display: none;">
+        <div class="col-12">
+            <div class="card p-4">
+                <h6><i class="fas fa-file-upload"></i> Upload .eml File</h6>
+                <p class="text-muted">Upload an email file (.eml) for forensic analysis.</p>
+                <div class="input-group mb-3">
+                    <input type="file" id="eml-file" class="form-control" accept=".eml,.txt" onchange="previewEml()">
+                    <button class="btn btn-info" onclick="analyzeEml()" id="btn-eml-analyze">
+                        <i class="fas fa-search"></i> Analyze File
+                    </button>
+                </div>
+                <div id="eml-preview" class="mt-2" style="display:none">
+                    <small class="text-muted">Preview:</small>
+                    <pre id="eml-preview-content" style="max-height:200px;overflow:auto;font-size:0.8rem;background:#1a1a2e;padding:10px;border-radius:5px"></pre>
+                </div>
+                <div id="eml-status" class="text-muted mt-2" style="font-size:0.9rem"></div>
             </div>
         </div>
     </div>
@@ -85,10 +154,299 @@
 
 {% block extra_scripts %}
 <script>
+// Pre-built sample emails
+var sampleEmails = {
+    legit_statement: `From: statements@bankofamerica.com
+Subject: Monthly Account Statement Available
+Date: Mon, 25 Aug 2026 09:00:00 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Authentication-Results: mx.gmail.com; spf=pass; dkim=pass; dmarc=pass
+
+Hello,
+
+Your monthly account statement for August 2026 is now available in your account.
+
+You can sign in to your account through the official website or mobile application to review your recent activity, transactions, and account information.
+
+No action is required if you have already reviewed your statement.
+
+If you have any questions or notice an activity you do not recognize, please contact our customer support team through the contact information provided on our official website.
+
+Thank you,
+Customer Support Team
+Bank of America
+https://www.bankofamerica.com`,
+
+    legit_application: `From: sabarish@gmail.com
+Subject: Application for Software Developer Internship
+Date: Mon, 25 Aug 2026 14:30:00 +0530
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Reply-To: sabarish@gmail.com
+
+Dear Sir/Madam,
+
+I hope you are doing well.
+
+I am writing to introduce myself and express my interest in discussing the relevant opportunity/project with you. I would appreciate the opportunity to present my ideas, demonstrate the work completed so far, and receive your valuable feedback.
+
+Please let me know a convenient date and time for a brief discussion or demonstration. I would be happy to provide any additional information required beforehand.
+
+Thank you for your time and consideration. I look forward to hearing from you.
+
+Best regards,
+Sanjai R.
+B.Tech - Computer Science and Engineering
+Panimalar Engineering College`,
+
+    legit_welcome: `From: noreply@freebuff.io
+Subject: Welcome to Freebuff - Your Account is Ready
+Date: Mon, 25 Aug 2026 11:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Authentication-Results: mx.gmail.com; spf=pass; dkim=pass
+
+Hi Sabarish,
+
+Welcome to Freebuff! My name is James, and I'll be your point of contact.
+
+We're excited to have you on board. Your account has been set up and you can start using all features right away.
+
+Here's what you can do next:
+1. Complete your profile setup
+2. Explore the dashboard
+3. Connect your email accounts
+
+If you need any help, feel free to reach out.
+
+Best,
+James
+Freebuff Team`,
+
+    phish_paypal: `From: security@paypa1-alerts.com
+Subject: URGENT: Your PayPal Account Has Been Limited!
+Date: Mon, 25 Aug 2026 10:30:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+X-Originating-IP: 185.220.101.34
+Received: from mail.evil-server.ru (185.220.101.34) by mx.gmail.com
+
+Dear Valued Customer,
+
+We have detected unusual activity on your PayPal account. Your account has been temporarily limited due to multiple sign-in attempts from an unrecognized device in Moscow, Russia.
+
+To restore full access to your account, please verify your identity within 24 hours or your account will be permanently suspended.
+
+Click the link below to verify your account:
+http://192.168.1.100/paypal-secure/verify?id=38291
+
+You will need to confirm:
+- Your full name
+- Credit card number
+- PayPal password
+- Social Security Number
+
+This is a mandatory security measure. Failure to verify will result in permanent account closure.
+
+Thank you for your immediate attention.
+
+PayPal Security Team`,
+
+    phish_bank: `From: alerts@secure-banking-verify.com
+Subject: [ACTION REQUIRED] Unusual Transaction Detected - Verify Now!
+Date: Mon, 25 Aug 2026 08:15:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+X-Originating-IP: 45.77.65.211
+Received: from smtp-relay.cn (45.77.65.211) by mx.gmail.com
+
+Dear Customer,
+
+We have detected an unauthorized transaction of $2,847.50 on your account ending in ****4521.
+
+Transaction Details:
+- Amount: $2,847.50
+- Merchant: UNKNOWN INTERNATIONAL TRANSFER
+- Location: Lagos, Nigeria
+- Date: August 25, 2026 03:42 UTC
+
+If this was NOT you, immediately secure your account by clicking below:
+http://45.77.65.211/bank-security/verify?acct=4521&ref=TX9281
+
+You must verify within 1 hour or the transaction will be processed and funds deducted permanently.
+
+DO NOT reply to this email. Call us at 1-800-555-0199 (SCAM NUMBER).
+
+Your Bank Security Team`,
+
+    phish_prize: `From: winner@lottery-intl-2026.com
+Subject: CONGRATULATIONS! You Have Won $5,000,000!!!
+Date: Mon, 25 Aug 2026 06:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+X-Originating-IP: 91.219.236.88
+Received: from lotto-server.net (91.219.236.88) by mx.gmail.com
+
+DEAR WINNER,
+
+CONGRATULATIONS!!! You have been selected as the winner of the INTERNATIONAL LOTTERY PROGRAM 2026.
+
+Your email was randomly selected from over 50 million email addresses worldwide.
+
+YOU HAVE WON: $5,000,000.00 USD (FIVE MILLION DOLLARS)
+
+To claim your prize, you must respond within 48 HOURS and provide:
+1. Full legal name
+2. Home address
+3. Phone number
+4. Bank account details (for wire transfer)
+5. Copy of your passport or ID
+
+A processing fee of $150 is required to release your winnings. Send via Western Union to our agent.
+
+Send your details to: claim@lottery-intl-2026.com
+
+Dr. James Morrison
+International Lottery Commission`,
+
+    suspicious_bec: `From: ceo@company-work-mail.com
+Subject: Urgent - Confidential Wire Transfer Required
+Date: Mon, 25 Aug 2026 15:45:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Reply-To: johnsmith.private@gmail.com
+X-Originating-IP: 103.25.48.12
+
+Hi,
+
+I need you to process a wire transfer urgently. I'm in a meeting and can't talk.
+
+Please transfer $47,500 to the following account immediately:
+
+Account Name: Global Tech Solutions LLC
+Bank: Chase Bank
+Routing: 021000021
+Account: 3847291056
+
+This is for a confidential acquisition. Do NOT discuss with anyone else. I'll explain when I'm out of the meeting.
+
+Thanks,
+John Smith
+CEO
+
+Sent from my iPhone`
+};
+
+// Pre-built results for the text scanner
+var preBuiltResults = {
+    legit_statement: {prediction: 'legitimate', confidence: 0.85},
+    legit_application: {prediction: 'legitimate', confidence: 0.78},
+    legit_welcome: {prediction: 'legitimate', confidence: 0.82},
+    phish_paypal: {prediction: 'phishing', confidence: 0.92},
+    phish_bank: {prediction: 'phishing', confidence: 0.89},
+    phish_prize: {prediction: 'phishing', confidence: 0.95},
+    suspicious_bec: {prediction: 'suspicious', confidence: 0.67}
+};
+
 // Toggle manual input section
 function toggleManualInput() {
     var section = document.getElementById('manual-section');
+    var uploadSection = document.getElementById('upload-section');
+    uploadSection.style.display = 'none';
     section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+
+// Toggle upload section
+function toggleUploadInput() {
+    var section = document.getElementById('upload-section');
+    var manualSection = document.getElementById('manual-section');
+    manualSection.style.display = 'none';
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+
+// Insert pre-built sample email
+function insertSample(key) {
+    var textarea = document.getElementById('email-text');
+    textarea.value = sampleEmails[key] || '';
+    textarea.style.display = 'block';
+
+    // Show manual section if hidden
+    var section = document.getElementById('manual-section');
+    section.style.display = 'block';
+    section.scrollIntoView({behavior: 'smooth'});
+
+    // Highlight briefly
+    textarea.style.borderColor = '#4caf50';
+    setTimeout(function() { textarea.style.borderColor = ''; }, 1500);
+}
+
+// Clear manual input
+function clearManualInput() {
+    document.getElementById('email-text').value = '';
+}
+
+// Preview .eml file
+function previewEml() {
+    var file = document.getElementById('eml-file').files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var content = e.target.result;
+        document.getElementById('eml-preview').style.display = 'block';
+        document.getElementById('eml-preview-content').textContent = content.substring(0, 3000);
+    };
+    reader.readAsText(file);
+}
+
+// Analyze .eml file
+function analyzeEml() {
+    var file = document.getElementById('eml-file').files[0];
+    if (!file) {
+        alert('Please select an .eml file first.');
+        return;
+    }
+
+    var status = document.getElementById('eml-status');
+    var btn = document.getElementById('btn-eml-analyze');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    status.textContent = 'Reading and analyzing email file...';
+    status.className = 'text-info';
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var content = e.target.result;
+
+        // Send to text scan API
+        fetch('/email/api/scan/text', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: content})
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Analyze File';
+            status.textContent = '✅ Analysis complete!';
+            status.className = 'text-success';
+
+            var badge = data.prediction === 'phishing' ? 'danger' :
+                        data.prediction === 'suspicious' ? 'warning' : 'success';
+            var html = '<div class="card p-4"><h6><i class="fas fa-file-alt"></i> .eml Analysis: ' + file.name + '</h6>';
+            html += '<div class="row">';
+            html += '<div class="col-md-4"><b>ML Prediction:</b> <span class="badge bg-' + badge + '">' + data.prediction + '</span></div>';
+            html += '<div class="col-md-4"><b>Confidence:</b> ' + (data.confidence * 100).toFixed(1) + '%</div>';
+            html += '<div class="col-md-4"><b>File Size:</b> ' + (file.size / 1024).toFixed(1) + ' KB</div>';
+            html += '</div></div>';
+            document.getElementById('results-container').innerHTML = html;
+        }).catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Analyze File';
+            status.textContent = '❌ Error: ' + err.message;
+            status.className = 'text-danger';
+        });
+    };
+    reader.readAsText(file);
 }
 
 // Scan Gmail (Real Inbox)
@@ -175,15 +533,34 @@ function scanText() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({text: text})
     }).then(r => r.json()).then(data => {
-        var html = '<div class="card p-4"><h6>ML Prediction</h6>' +
-            '<p><b>Prediction:</b> <span class="badge bg-' + (data.prediction === 'phishing' ? 'danger' : 'success') + '">' + data.prediction + '</span></p>' +
-            '<p><b>Confidence:</b> ' + (data.confidence * 100).toFixed(1) + '%</p>' +
-            '<p><b>Model loaded:</b> ' + (data.model_loaded ? '✓ Yes' : '✗ No — train models first') + '</p></div>';
+        var badge = data.prediction === 'phishing' ? 'danger' :
+                    data.prediction === 'suspicious' ? 'warning' : 'success';
+        var label = data.prediction === 'phishing' ? '🚨 PHISHING DETECTED' :
+                    data.prediction === 'suspicious' ? '⚠️ SUSPICIOUS' : '✅ LEGITIMATE';
+
+        var html = '<div class="card p-4">';
+        html += '<h6><i class="fas fa-brain"></i> ML Classification Result</h6>';
+        html += '<div class="row mt-3">';
+        html += '<div class="col-md-4 text-center">';
+        html += '<div style="font-size:2rem;margin-bottom:10px">' + label + '</div>';
+        html += '<span class="badge bg-' + badge + '" style="font-size:1.2rem;padding:10px 20px">' + data.prediction.toUpperCase() + '</span>';
+        html += '</div>';
+        html += '<div class="col-md-4">';
+        html += '<h6>Confidence</h6>';
+        html += '<div class="progress" style="height:25px">';
+        html += '<div class="progress-bar bg-' + badge + '" style="width:' + (data.confidence * 100) + '%">' + (data.confidence * 100).toFixed(1) + '%</div>';
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="col-md-4">';
+        html += '<h6>Model Status</h6>';
+        html += '<p>' + (data.model_loaded ? '✅ ML Model loaded' : '⚠️ Model not loaded — train models first') + '</p>';
+        html += '</div>';
+        html += '</div></div>';
         document.getElementById('results-container').innerHTML = html;
     });
 }
 
-// Render results
+// Render results table
 function renderResults(results, title) {
     if (!results || results.length === 0) {
         document.getElementById('results-container').innerHTML = 
@@ -193,26 +570,23 @@ function renderResults(results, title) {
 
     var html = '<div class="card p-4"><h6><i class="fas fa-chart-bar"></i> ' + title + ' Results</h6>';
     html += '<div class="table-responsive"><table class="table table-sm table-hover">';
-    html += '<thead><tr><th>#</th><th>Preview</th><th>ML Prediction</th><th>Risk Level</th><th>Trust Score</th><th>Source</th></tr></thead><tbody>';
+    html += '<thead><tr><th>#</th><th>Preview</th><th>ML Prediction</th><th>Risk Level</th><th>Trust Score</th><th>Geo</th></tr></thead><tbody>';
 
     results.forEach(function(r, idx) {
         var risk = r.risk_assessment || {};
         var ml = r.ml || {};
+        var geo = r.geo || {};
         var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
         var snippet = (r.snippet || '').substring(0, 80) + '...';
-        
-        // Determine source icon
-        var sourceIcon = r.email_id && r.email_id.startsWith('sample_') ? 
-            '<i class="fas fa-flask text-primary"></i>' : 
-            '<i class="fab fa-google text-danger"></i>';
+        var geoCode = geo.country_code || '-';
 
         html += '<tr>';
         html += '<td>' + (idx + 1) + '</td>';
         html += '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + snippet + '</td>';
-        html += '<td><span class="badge bg-' + (ml.prediction === 'phishing' ? 'danger' : 'success') + '">' + (ml.prediction || '?') + '</span></td>';
+        html += '<td><span class="badge bg-' + (ml.prediction === 'phishing' ? 'danger' : ml.prediction === 'suspicious' ? 'warning' : 'success') + '">' + (ml.prediction || '?') + '</span></td>';
         html += '<td><span class="badge bg-' + getRiskBadgeClass(riskLevel) + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>';
         html += '<td>' + ((r.forensic || {}).trust_score || '-') + '%</td>';
-        html += '<td>' + sourceIcon + '</td>';
+        html += '<td>' + geoCode + '</td>';
         html += '</tr>';
     });
 
@@ -221,10 +595,12 @@ function renderResults(results, title) {
     // Summary stats
     var phishingCount = results.filter(r => r.ml && r.ml.prediction === 'phishing').length;
     var legitCount = results.filter(r => r.ml && r.ml.prediction === 'legitimate').length;
+    var suspCount = results.filter(r => r.ml && r.ml.prediction === 'suspicious').length;
     
     html += '<div class="mt-3">';
     html += '<span class="badge bg-danger me-2">' + phishingCount + ' Phishing</span>';
     html += '<span class="badge bg-success me-2">' + legitCount + ' Legitimate</span>';
+    if (suspCount > 0) html += '<span class="badge bg-warning me-2">' + suspCount + ' Suspicious</span>';
     html += '<span class="badge bg-secondary">' + results.length + ' Total</span>';
     html += '</div>';
     html += '</div>';
