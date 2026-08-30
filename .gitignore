@@ -22,6 +22,14 @@ instance/
 # Credentials
 backend/credentials/
 token.pickle
+*.json
+
+# Test artifacts
+test_*.py
+test_*.json
+
+# Analysis logs
+backend/logs/
 
 # Uploads & Reports
 uploads/
