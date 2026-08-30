@@ -1,42 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Demo — AI Email Forensics</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+{% extends "base.html" %}
+{% block title %}Live Demo — AI Email Forensics{% endblock %}
+{% block extra_head %}
     <style>
-        :root { --primary: #1a237e; --accent: #283593; --glow: #00e5ff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0e1a; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+        :root { --glow: #00e5ff; }
 
-        /* Header */
-        .demo-header {
-            background: linear-gradient(135deg, var(--primary) 0%, #0d1b3e 100%);
-            padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid rgba(0,229,255,0.2);
-        }
-        .demo-header h1 { font-size: 1.5rem; font-weight: 700; color: white; }
-        .demo-header h1 i { color: var(--glow); margin-right: 10px; }
-        .status-pill { padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-        .status-connected { background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid #00e676; }
-        .status-disconnected { background: rgba(255,82,82,0.15); color: #ff5252; border: 1px solid #ff5252; }
-        .status-scanning { background: rgba(0,229,255,0.15); color: var(--glow); border: 1px solid var(--glow); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .demo-body { display: grid; grid-template-columns: 1fr 400px; gap: 20px; height: calc(100vh - 100px); }
 
-        /* Main layout */
-        .demo-body { display: grid; grid-template-columns: 1fr 400px; gap: 20px; padding: 20px 30px; height: calc(100vh - 80px); }
-
-        /* Left: scan area */
         .scan-area { display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
         .progress-section { flex-shrink: 0; }
         .progress-bar-wrapper { height: 8px; background: #1a2332; border-radius: 4px; overflow: hidden; margin-top: 8px; }
         .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--glow), #76ff03); border-radius: 4px; transition: width 0.4s ease; }
         .progress-text { font-size: 0.85rem; color: #90a4ae; margin-top: 4px; }
 
-        /* Cards grid */
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; overflow-y: auto; padding-right: 8px; flex: 1; }
         .cards-grid::-webkit-scrollbar { width: 4px; }
         .cards-grid::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.3); border-radius: 2px; }
@@ -78,30 +53,25 @@
         .auth-fail { background: rgba(239,68,68,0.15); color: #ef4444; }
         .auth-missing { background: rgba(100,116,139,0.15); color: #94a3b8; }
 
-        /* Right panel: stats + map */
         .side-panel { display: flex; flex-direction: column; gap: 16px; }
-        .stats-card { background: #111827; border-radius: 12px; padding: 20px; border: 1px solid #1e293b; }
-        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+        .stats-card { background: #1a1d27; border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.06); }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
         .stat-row:last-child { border-bottom: none; }
-        .stat-label { color: #64748b; font-size: 0.85rem; }
-        .stat-value { font-weight: 700; font-size: 1rem; }
+        .stat-label { color: #8892a4; font-size: 0.85rem; }
+        .stat-value { font-weight: 700; font-size: 1rem; color: #e0e0e0; }
         .map-container { flex: 1; border-radius: 12px; overflow: hidden; min-height: 300px; }
 
-        /* Scanning animation */
         .scanning-pulse { animation: scanPulse 2s infinite; }
         @keyframes scanPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.4); } 50% { box-shadow: 0 0 20px 5px rgba(0,229,255,0.1); } }
 
-        /* Big number animation */
         .big-number { font-size: 3rem; font-weight: 800; font-variant-numeric: tabular-nums; transition: color 0.3s; }
 
-        /* Toast messages */
         .toast-area { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
         .toast-msg { padding: 10px 16px; border-radius: 8px; font-size: 0.8rem; animation: toastIn 0.3s ease; background: #1e293b; border-left: 3px solid var(--glow); color: #e0e0e0; }
         @keyframes toastIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* Control bar */
         .control-bar { flex-shrink: 0; display: flex; gap: 10px; align-items: center; }
-        .control-bar input { background: #1a2332; border: 1px solid #2d3748; color: white; padding: 8px 14px; border-radius: 8px; width: 80px; }
+        .control-bar input { background: #12141c; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 14px; border-radius: 8px; width: 80px; }
         .btn-scan {
             background: linear-gradient(135deg, #00e5ff, #2979ff); color: #0a0e1a; font-weight: 700;
             padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
@@ -110,26 +80,28 @@
         .btn-scan:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,229,255,0.3); }
         .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .btn-reset { background: #2d3748; color: #94a3b8; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+
+        .status-pill { padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .status-connected { background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid #00e676; }
+        .status-disconnected { background: rgba(255,82,82,0.15); color: #ff5252; border: 1px solid #ff5252; }
+        .status-scanning { background: rgba(0,229,255,0.15); color: var(--glow); border: 1px solid var(--glow); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
     </style>
-</head>
-<body>
-    <!-- Header -->
-    <div class="demo-header">
-        <h1><i class="fas fa-shield-halved"></i> AI Email Forensics — Live Demo</h1>
-        <div>
-            <span class="status-pill status-disconnected" id="conn-status">
-                <i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Disconnected
-            </span>
-        </div>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="fas fa-bolt"></i> Live Demo</h4>
+        <span class="status-pill status-disconnected" id="conn-status">
+            <i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Disconnected
+        </span>
     </div>
 
-    <!-- Body -->
     <div class="demo-body">
         <!-- Left: scan area -->
         <div class="scan-area">
-            <!-- Controls -->
             <div class="control-bar">
-                <label style="font-size:0.85rem;color:#94a3b8">Emails:</label>
+                <label style="font-size:0.85rem;color:#8892a4">Emails:</label>
                 <input type="number" id="email-count" value="5" min="1" max="20">
                 <button class="btn-scan" id="btn-scan" onclick="startScan()">
                     <i class="fas fa-bolt"></i> Start Live Scan
@@ -139,10 +111,9 @@
                 <span id="scan-counter" style="font-size:0.85rem;color:#64748b"></span>
             </div>
 
-            <!-- Progress -->
             <div class="progress-section">
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span id="progress-label" style="font-size:0.85rem;color:#94a3b8">Ready</span>
+                    <span id="progress-label" style="font-size:0.85rem;color:#8892a4">Ready</span>
                     <span id="progress-pct" style="font-size:0.85rem;color:var(--glow);font-weight:600">0%</span>
                 </div>
                 <div class="progress-bar-wrapper">
@@ -150,64 +121,59 @@
                 </div>
             </div>
 
-            <!-- Cards -->
             <div class="cards-grid" id="cards-grid"></div>
         </div>
 
         <!-- Right: stats + map -->
         <div class="side-panel">
             <div class="stats-card">
-                <h6 style="color:#64748b;margin-bottom:12px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Live Statistics</h6>
+                <h6 style="color:#8892a4;margin-bottom:12px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Live Statistics</h6>
                 <div class="stat-row">
                     <span class="stat-label">Scanned</span>
                     <span class="stat-value" id="stat-scanned">0</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Phishing</span>
-                    <span class="stat-value text-danger" id="stat-phishing">0</span>
+                    <span class="stat-value" style="color:#ef5350" id="stat-phishing">0</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Legitimate</span>
-                    <span class="stat-value text-success" id="stat-legit">0</span>
+                    <span class="stat-value" style="color:#66bb6a" id="stat-legit">0</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Avg Risk Score</span>
-                    <span class="stat-value" id="stat-avg-risk">—</span>
+                    <span class="stat-value" id="stat-avg-risk">&mdash;</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">High/Critical</span>
-                    <span class="stat-value text-warning" id="stat-high">0</span>
+                    <span class="stat-value" style="color:#ffa726" id="stat-high">0</span>
                 </div>
             </div>
 
             <div class="stats-card map-container">
-                <h6 style="color:#64748b;margin-bottom:8px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Threat Origins</h6>
+                <h6 style="color:#8892a4;margin-bottom:8px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Threat Origins</h6>
                 <div id="demo-map" style="height: calc(100% - 30px); border-radius: 8px;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Toast area -->
     <div class="toast-area" id="toast-area"></div>
+{% endblock %}
 
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% block extra_scripts %}
     <script>
-    // --- State ---
     var scanned = 0, phishingCount = 0, legitCount = 0, highCount = 0, riskSum = 0;
     var totalExpected = 0;
     var map, markers = [];
 
-    // --- Map ---
     function initMap() {
         map = L.map('demo-map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© CartoDB'
+            attribution: '&copy; CartoDB'
         }).addTo(map);
     }
     initMap();
 
-    // --- SocketIO ---
     var socket = io();
 
     socket.on('connect', function() {
@@ -221,9 +187,7 @@
         document.getElementById('conn-status').innerHTML = '<i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Disconnected';
     });
 
-    socket.on('connected', function(data) {
-        showToast(data.message, 'info');
-    });
+    socket.on('connected', function(data) { showToast(data.message, 'info'); });
 
     socket.on('scan_started', function(data) {
         totalExpected = data.total;
@@ -251,7 +215,6 @@
         var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
         var prediction = ml.prediction || 'unknown';
 
-        // Update stats
         if (prediction === 'phishing') phishingCount++;
         else if (prediction === 'legitimate') legitCount++;
         riskSum += (risk.risk_score || 0);
@@ -263,7 +226,6 @@
         document.getElementById('stat-high').textContent = highCount;
         document.getElementById('stat-avg-risk').textContent = Math.round(riskSum / scanned);
 
-        // Create card
         var card = document.createElement('div');
         card.className = 'scan-card ' + prediction;
 
@@ -292,7 +254,6 @@
         var grid = document.getElementById('cards-grid');
         grid.insertBefore(card, grid.firstChild);
 
-        // Update map
         if (geo.latitude && geo.longitude) {
             var color = riskLevel === 'critical' ? '#ef4444' : riskLevel === 'high' ? '#ffa726' : '#ffee58';
             var marker = L.circleMarker([geo.latitude, geo.longitude], {
@@ -303,8 +264,6 @@
                 'Prediction: ' + prediction
             ).addTo(map);
             markers.push(marker);
-
-            // Fit map to show all markers
             if (markers.length > 1) {
                 var group = L.featureGroup(markers);
                 map.fitBounds(group.getBounds().pad(0.2));
@@ -312,14 +271,10 @@
                 map.setView([geo.latitude, geo.longitude], 5);
             }
         }
-
-        // Toast
         showToast(data.message, prediction === 'phishing' ? 'danger' : 'success');
     });
 
-    socket.on('scan_error', function(data) {
-        showToast(data.message || 'Scan error', 'danger');
-    });
+    socket.on('scan_error', function(data) { showToast(data.message || 'Scan error', 'danger'); });
 
     socket.on('scan_complete', function(data) {
         document.getElementById('btn-scan').disabled = false;
@@ -328,14 +283,10 @@
         document.getElementById('progress-bar').style.width = '100%';
         document.getElementById('progress-pct').textContent = '100%';
         document.getElementById('progress-label').textContent = 'Scan complete!';
-
         showToast(data.message, 'info');
-        if (data.phishing_detected > 0) {
-            showToast(data.phishing_detected + ' PHISHING emails detected!', 'danger');
-        }
+        if (data.phishing_detected > 0) showToast(data.phishing_detected + ' PHISHING emails detected!', 'danger');
     });
 
-    // --- Actions ---
     function startScan() {
         var count = parseInt(document.getElementById('email-count').value) || 5;
         socket.emit('start_demo_scan', { limit: count });
@@ -348,7 +299,7 @@
         document.getElementById('stat-phishing').textContent = '0';
         document.getElementById('stat-legit').textContent = '0';
         document.getElementById('stat-high').textContent = '0';
-        document.getElementById('stat-avg-risk').textContent = '—';
+        document.getElementById('stat-avg-risk').textContent = '\u2014';
         document.getElementById('progress-bar').style.width = '0%';
         document.getElementById('progress-pct').textContent = '0%';
         document.getElementById('progress-label').textContent = 'Ready';
@@ -359,10 +310,8 @@
         map.setView([20, 0], 2);
     }
 
-    // --- Helpers ---
     function getRiskColor(level) {
-        var colors = { critical: '#ef5350', high: '#ffa726', medium: '#ffee58', low: '#66bb6a', safe: '#42a5f5' };
-        return colors[level] || '#94a3b8';
+        return { critical: '#ef5350', high: '#ffa726', medium: '#ffee58', low: '#66bb6a', safe: '#42a5f5' }[level] || '#94a3b8';
     }
 
     function showToast(msg, type) {
@@ -377,5 +326,4 @@
         setTimeout(function() { toast.remove(); }, 5000);
     }
     </script>
-</body>
-</html>
+{% endblock %}
