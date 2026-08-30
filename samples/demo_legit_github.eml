@@ -1,0 +1,44 @@
+From: notifications@github.com
+To: sabarish-sec-lab@github.com
+Subject: [GitHub] A new sign-in to your account
+Date: Mon, 25 Aug 2026 10:30:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Return-Path: <notifications@github.com>
+Message-ID: <notify@github.com>
+Received: from mail-github-com.fpdx01.githost.com (mail-github-com.fpdx01.githost.com [140.82.114.4])
+	by mx.google.com with ESMTPS id abc123def456
+	for <sabarish.sec.lab@gmail.com>
+	(version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256);
+	Mon, 25 Aug 2026 10:30:02 +0000 (UTC)
+Received-SPF: pass (google.com: domain of notifications@github.com designates 140.82.114.4 as permitted sender)
+Authentication-Results: mx.google.com;
+       dkim=pass header.d=github.com;
+       spf=pass (google.com: domain of notifications@github.com designates 140.82.114.4 as permitted sender) smtp.mailfrom=notifications@github.com;
+       dmarc=pass (p=REJECT) header.from=github.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=github.com; s=selector2;
+	bh=RealBase64Hash=;
+	h=from:to:subject:date:mime-version:content-type;
+	b=RealSignatureData=
+
+Hi sabarish-sec-lab,
+
+A new sign-in to your account was detected.
+
+Device: MacBook Pro
+Browser: Safari 17.5
+Operating System: macOS Sonoma 14.5
+IP Address: 103.25.48.12
+Location: Chennai, India
+
+Date & Time: August 25, 2026 4:00 PM IST
+
+If this was you, great! No further action is required.
+
+If you don't recognize this sign-in activity, please review your account security settings and consider changing your password immediately.
+
+Learn more about securing your account: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github
+
+Thanks,
+The GitHub Team
