@@ -45,7 +45,7 @@ Build an AI-powered platform that detects email-based threats (phishing, BEC, ma
 │  │ml_       │ │threat_   │ │geo_      │ │forensic_ │ │risk_     │ │
 │  │predictor │ │intel     │ │service   │ │analyzer  │ │scoring   │ │
 │  │(XGB+LGB  │ │(VT+SB+   │ │(MaxMind+ │ │(SPF/     │ │(weighted │ │
-│  │ +BERT)   │ │ RDAP+    │ │ ipapi)   │ │ DKIM/    │ │ composite│ │
+│  │+BERT opt)│ │ RDAP+    │ │ ipapi)   │ │ DKIM/    │ │ composite│ │
 │  │          │ │ AbuseIP) │ │          │ │ DMARC)   │ │ 0-100)   │ │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐                           │
@@ -58,7 +58,7 @@ Build an AI-powered platform that detects email-based threats (phishing, BEC, ma
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐                           │
 │  │SQLAlchemy│ │ML Models │ │GeoLite2  │                           │
 │  │(SQLite)  │ │(.pkl +   │ │(.mmdb)   │                           │
-│  │          │ │ BERT)    │ │          │                           │
+│  │          │ │BERTopt.) │ │          │                           │
 │  └──────────┘ └──────────┘ └──────────┘                           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -69,7 +69,7 @@ Build an AI-powered platform that detects email-based threats (phishing, BEC, ma
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **ML Email Detection** | ✅ | 3-model ensemble: XGBoost + LightGBM + DistilBERT (98.9% accuracy) |
+| **ML Email Detection** | ✅ | Adaptive ensemble: XGBoost (97.39%) + LightGBM (97.56%) by default; auto-upgrades to full 3-model ensemble with DistilBERT (98.92%) when `requirements-torch.txt` is installed. Live Render deployment runs XGB+LGB only. All figures from evaluated test-set results in `model_comparison.json`. |
 | **Geolocation** | ✅ | IP → City/Country/ASN via MaxMind GeoLite2 + ipapi.co fallback |
 | **Email Forensics** | ✅ | SPF/DKIM/DMARC analysis, Received chain tracing, per-hop geo |
 | **Unified Risk Scoring** | ✅ | Weighted 6-signal composite (ML + intel + auth + geo + forensic + content) |
@@ -164,6 +164,8 @@ Input Email Text
 | **DistilBERT** | 98.92% | 98.44% | 98.32% | 98.38% | 0.9991 | 268 MB |
 | **XGB+LGB Ensemble** | ~97.5% | ~95.1% | ~97.5% | ~96.4% | ~0.996 | 4.0 MB |
 | **Full 3-Model Ensemble** | **98.9%** | **98.4%** | **98.3%** | **98.4%** | **0.999** | 272 MB |
+
+> **Note:** Individual model figures (XGBoost, LightGBM, DistilBERT) are measured test-set results from `model_comparison.json`. XGB+LGB Ensemble figures are estimated from the individual scores; the Full 3-Model Ensemble figures are DistilBERT-weighted and match the DistilBERT test-set result.
 
 ### Deployment Configurations
 

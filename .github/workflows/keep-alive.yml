@@ -1,0 +1,39 @@
+name: Keep Render Alive
+
+# Pings /api/health every 10 minutes to prevent Render free-tier cold starts.
+# Render free tier spins down after 15 min idle; this keeps it warm continuously.
+
+on:
+  schedule:
+    # Every 10 minutes, 24/7
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI (useful for forcing a warm-up
+    # right before recording your demo video)
+
+jobs:
+  ping:
+    name: Ping health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping /api/health
+        run: |
+          echo "Pinging https://sih26106-email-forensics.onrender.com/api/health ..."
+          RESPONSE=$(curl --silent --show-error --max-time 30 \
+            --write-out "\nHTTP_STATUS:%{http_code} TIME:%{time_total}s" \
+            https://sih26106-email-forensics.onrender.com/api/health)
+          echo "$RESPONSE"
+
+          # Extract HTTP status code
+          HTTP_STATUS=$(echo "$RESPONSE" | grep -o 'HTTP_STATUS:[0-9]*' | cut -d: -f2)
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Service is up (HTTP $HTTP_STATUS)"
+          else
+            echo "⚠️  Unexpected status: HTTP $HTTP_STATUS"
+            # Don't fail the workflow — a non-200 just means Render is mid-restart.
+            # The next ping in 10 minutes will catch it when it's back.
+            exit 0
+          fi
