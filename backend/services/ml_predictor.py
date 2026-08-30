@@ -58,6 +58,47 @@ KNOWN_LEGITIMATE_DOMAINS = [
 ]
 
 
+def _check_malware_signals(text: str) -> dict:
+    """
+    Detect malware delivery patterns that ML might miss.
+    Returns {'is_malware': bool, 'confidence': float, 'reason': str, 'signals': list}.
+    """
+    tl = text.lower()
+    signals = []
+
+    # Double extension trick: .pdf.exe, .doc.exe, .xls.exe, etc.
+    if re.search(r'\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|jpg|png|zip|rar)\.exe', tl):
+        signals.append('double_extension_executable')
+
+    # Direct .exe download link
+    if re.search(r'https?://\S+\.exe\b', tl):
+        signals.append('exe_download_link')
+
+    # Password-protected attachment with password in body
+    if re.search(r'password[- ]protected|password\s*[=:]\s*\w+', tl):
+        signals.append('password_in_body')
+
+    # Fake invoice + download link combo
+    if re.search(r'invoice|payment due|amount due', tl) and re.search(r'https?://\S+', tl):
+        signals.append('invoice_with_link')
+
+    # Suspicious domain patterns
+    if re.search(r'docs-sharing|file-sharing|secure-download|dl/inv', tl):
+        signals.append('suspicious_download_domain')
+
+    # Decision: 2+ signals = likely malware
+    is_malware = len(signals) >= 2
+    confidence = min(0.95, 0.6 + len(signals) * 0.1)
+    reason = f'{len(signals)} malware signals: {", ".join(signals)}' if signals else 'no malware signals'
+
+    return {
+        'is_malware': is_malware,
+        'confidence': confidence,
+        'reason': reason,
+        'signals': signals,
+    }
+
+
 def _check_legitimate_signals(text: str) -> dict:
     """
     Heuristic check for obviously legitimate emails.
@@ -342,10 +383,17 @@ class MLPredictor:
             # Post-processing: override ML if email has strong legitimate signals
             # This catches false positives where TF-IDF over-weights "account"/"sign in"
             legit_check = _check_legitimate_signals(email_text)
-            if label == "phishing" and legit_check['is_legitimate']:
+            if label in ('phishing', 'suspicious') and legit_check['is_legitimate']:
                 label = "legitimate"
                 confidence = 0.85  # High confidence override
-                logger.info(f"ML override: {legit_check['reason']}")
+                logger.info(f"ML override ({label}): {legit_check['reason']}")
+
+            # Anti-signal: detect malware delivery patterns that ML might miss
+            malware_check = _check_malware_signals(email_text)
+            if malware_check['is_malware'] and label != 'phishing':
+                label = "phishing"
+                confidence = malware_check['confidence']
+                logger.info(f"Malware override: {malware_check['reason']}")
 
             return label, float(round(confidence, 4))
 
@@ -423,10 +471,17 @@ class MLPredictor:
 
             # Post-processing override
             legit_check = _check_legitimate_signals(email_text)
-            if label == "phishing" and legit_check['is_legitimate']:
+            if label in ('phishing', 'suspicious') and legit_check['is_legitimate']:
                 label = "legitimate"
                 confidence = 0.85
                 model_used = "heuristic_override"
+
+            # Anti-signal: detect malware delivery patterns
+            malware_check = _check_malware_signals(email_text)
+            if malware_check['is_malware'] and label != 'phishing':
+                label = "phishing"
+                confidence = malware_check['confidence']
+                model_used = "malware_detection"
 
             return {
                 "label": label,
