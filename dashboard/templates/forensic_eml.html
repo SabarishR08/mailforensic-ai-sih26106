@@ -4,7 +4,6 @@
     <style>
         :root { --glow: #00e5ff; }
 
-        /* Upload zone */
         .upload-zone {
             border: 3px dashed rgba(0,229,255,0.3); border-radius: 16px;
             padding: 60px 30px; text-align: center; background: #1a1d27;
@@ -30,90 +29,126 @@
         .results.active { display: block; animation: fadeUp 0.4s ease; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
 
-        .section-card {
-            background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.3); border-left: 4px solid #42a5f5;
-            color: #e0e0e0; border-top: 1px solid rgba(255,255,255,0.06);
-            border-right: 1px solid rgba(255,255,255,0.06);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        .section-card h6 {
-            color: var(--glow); font-weight: 700; text-transform: uppercase;
-            font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 14px;
-        }
-        .section-card.phishing-border { border-left-color: #ef5350; }
-        .section-card.safe-border { border-left-color: #66bb6a; }
+        /* Card grid */
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .card-grid .full-width { grid-column: 1 / -1; }
+        @media (max-width: 900px) { .card-grid { grid-template-columns: 1fr; } }
 
+        .fcard {
+            background: #1a1d27; border-radius: 12px; padding: 20px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3); color: #e0e0e0;
+        }
+        .fcard-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+            padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .fcard-header i { color: var(--glow); font-size: 1rem; }
+        .fcard-header h6 {
+            color: #fff; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+            letter-spacing: 0.8px; margin: 0;
+        }
+
+        /* Risk gauge */
+        .risk-gauge {
+            width: 100px; height: 100px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; font-weight: 800; color: white; margin: 0 auto 10px;
+        }
+        .risk-verdict {
+            text-align: center; font-size: 1rem; font-weight: 700; margin-top: 6px;
+        }
+
+        /* ML badge */
+        .ml-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: 10px; font-weight: 700; font-size: 1.1rem;
+        }
+        .ml-phishing { background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.3); }
+        .ml-legitimate { background: rgba(102,187,106,0.15); color: #66bb6a; border: 1px solid rgba(102,187,106,0.3); }
+        .ml-suspicious { background: rgba(255,152,0,0.15); color: #ffa726; border: 1px solid rgba(255,152,0,0.3); }
+        .ml-unknown { background: rgba(255,255,255,0.05); color: #8892a4; border: 1px solid rgba(255,255,255,0.1); }
+
+        /* Confidence bar */
+        .conf-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 8px; }
+        .conf-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+
+        /* Auth badges */
         .auth-badge {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
-            margin: 3px;
+            padding: 6px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin: 3px;
         }
-        .auth-pass { background: rgba(102,187,106,0.15); color: #66bb6a; }
-        .auth-fail { background: rgba(239,83,80,0.15); color: #ef5350; }
-        .auth-missing { background: rgba(255,255,255,0.05); color: #8892a4; }
-        .auth-softfail { background: rgba(255,152,0,0.15); color: #ffa726; }
+        .auth-pass { background: rgba(102,187,106,0.12); color: #66bb6a; border: 1px solid rgba(102,187,106,0.25); }
+        .auth-fail { background: rgba(239,83,80,0.12); color: #ef5350; border: 1px solid rgba(239,83,80,0.25); }
+        .auth-missing { background: rgba(255,255,255,0.04); color: #8892a4; border: 1px solid rgba(255,255,255,0.08); }
+        .auth-softfail { background: rgba(255,152,0,0.12); color: #ffa726; border: 1px solid rgba(255,152,0,0.25); }
 
-        .risk-gauge {
-            width: 120px; height: 120px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2rem; font-weight: 800; color: white; margin: 0 auto 12px;
-        }
-
-        .meta-table { width: 100%; }
-        .meta-table td { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
-        .meta-table td:first-child { color: #8892a4; width: 140px; font-weight: 600; }
+        /* Meta table */
+        .meta-table { width: 100%; border-collapse: collapse; }
+        .meta-table td { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; }
+        .meta-table td:first-child { color: #8892a4; width: 120px; font-weight: 600; }
         .meta-table td:last-child { color: #e0e0e0; word-break: break-all; }
 
+        /* Routing hops */
         .hop-item {
-            display: flex; gap: 12px; padding: 10px 14px; margin-bottom: 6px;
-            background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.85rem;
-            border-left: 3px solid rgba(255,255,255,0.1);
+            display: flex; gap: 12px; padding: 10px 12px; margin-bottom: 8px;
+            background: rgba(255,255,255,0.02); border-radius: 8px; font-size: 0.82rem;
+            border-left: 3px solid rgba(0,229,255,0.3);
         }
-        .hop-item.suspicious { border-left-color: #ef5350; background: rgba(239,83,80,0.05); }
+        .hop-item.suspicious { border-left-color: #ef5350; background: rgba(239,83,80,0.04); }
         .hop-number {
-            width: 28px; height: 28px; border-radius: 50%;
-            background: var(--glow); color: #0d1b2a; display: flex;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: rgba(0,229,255,0.15); color: var(--glow); display: flex;
             align-items: center; justify-content: center; font-weight: 700;
-            font-size: 0.75rem; flex-shrink: 0;
+            font-size: 0.7rem; flex-shrink: 0;
         }
-        .hop-item.suspicious .hop-number { background: #ef5350; color: #fff; }
-        .hop-detail { flex: 1; }
-        .hop-host { font-weight: 600; color: #e0e0e0; }
-        .hop-ip { color: #8892a4; font-family: monospace; font-size: 0.8rem; }
-        .hop-geo { color: #42a5f5; font-size: 0.78rem; }
+        .hop-item.suspicious .hop-number { background: rgba(239,83,80,0.2); color: #ef5350; }
+        .hop-host { font-weight: 600; color: #e0e0e0; font-size: 0.82rem; }
+        .hop-ip { color: #8892a4; font-family: monospace; font-size: 0.78rem; }
+        .hop-geo { color: #42a5f5; font-size: 0.75rem; }
 
+        /* Mismatch */
         .mismatch-item {
-            padding: 10px 14px; margin-bottom: 6px; background: rgba(255,152,0,0.08);
-            border-radius: 8px; border-left: 3px solid #ffa726; font-size: 0.85rem;
-            color: #e0e0e0;
+            padding: 10px 12px; margin-bottom: 6px; background: rgba(255,152,0,0.06);
+            border-radius: 8px; border-left: 3px solid #ffa726; font-size: 0.82rem;
         }
-        .mismatch-item.high { background: rgba(239,83,80,0.08); border-left-color: #ef5350; }
+        .mismatch-item.high { background: rgba(239,83,80,0.06); border-left-color: #ef5350; }
 
-        .risk-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .risk-bar-label { width: 130px; font-size: 0.82rem; color: #8892a4; font-weight: 600; }
-        .risk-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; }
-        .risk-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
-        .risk-bar-value { width: 40px; text-align: right; font-size: 0.82rem; font-weight: 700; color: #e0e0e0; }
+        /* Geo grid */
+        .geo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .geo-item { padding: 8px 0; }
+        .geo-label { font-size: 0.72rem; color: #8892a4; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .geo-value { font-size: 0.9rem; color: #e0e0e0; font-weight: 600; }
 
+        /* Risk bars */
+        .risk-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .risk-bar-label { width: 120px; font-size: 0.78rem; color: #8892a4; font-weight: 600; }
+        .risk-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+        .risk-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+        .risk-bar-value { width: 35px; text-align: right; font-size: 0.78rem; font-weight: 700; color: #e0e0e0; }
+
+        /* URL items */
         .url-item {
-            padding: 10px 14px; margin-bottom: 6px; background: rgba(255,255,255,0.03);
-            border-radius: 8px; font-size: 0.85rem;
+            padding: 10px 12px; margin-bottom: 6px; background: rgba(255,255,255,0.02);
+            border-radius: 8px; font-size: 0.82rem;
         }
-        .url-text { font-family: monospace; word-break: break-all; color: #e0e0e0; }
+        .url-text { font-family: monospace; word-break: break-all; color: #e0e0e0; font-size: 0.78rem; }
         .url-score { float: right; font-weight: 700; }
 
+        /* Body preview */
         .body-preview {
             background: #12141c; padding: 14px; border-radius: 8px;
-            font-family: monospace; font-size: 0.82rem; color: #8892a4;
-            max-height: 200px; overflow-y: auto; white-space: pre-wrap;
+            font-family: 'Courier New', monospace; font-size: 0.8rem; color: #8892a4;
+            max-height: 280px; overflow-y: auto; white-space: pre-wrap;
             word-break: break-word; border: 1px solid rgba(255,255,255,0.06);
+            line-height: 1.5;
         }
 
+        /* Action buttons */
         .btn-forensic {
             background: linear-gradient(135deg, #0d47a1, #1565c0);
             color: white; font-weight: 600; padding: 10px 24px;
-            border: none; border-radius: 8px; cursor: pointer;
+            border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
         }
         .btn-forensic:hover { box-shadow: 0 4px 15px rgba(0,229,255,0.2); transform: translateY(-1px); }
         .btn-forensic:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
@@ -124,13 +159,19 @@
         }
         .error-state.active { display: block; }
         .error-state i { font-size: 2.5rem; color: #ef5350; margin-bottom: 12px; }
+
+        /* Full width section */
+        .full-card {
+            background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+            border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
     </style>
 {% endblock %}
 
 {% block content %}
     <h4 class="mb-4"><i class="fas fa-microscope"></i> Forensic Analysis — .eml Upload</h4>
 
-    <div class="container-fluid" style="max-width: 1100px;">
+    <div class="container-fluid" style="max-width: 1200px;">
 
         <!-- Upload Zone -->
         <div id="upload-section">
@@ -138,7 +179,7 @@
                 <div class="icon"><i class="fas fa-file-import"></i></div>
                 <h5>Drop an .eml file here</h5>
                 <p>or click to browse — no Gmail credentials needed</p>
-                <p style="margin-top:8px; font-size:0.8rem; color:#999;">
+                <p style="margin-top:8px; font-size:0.8rem; color:#666;">
                     Accepts raw .eml files exported from any email client
                 </p>
                 <input type="file" id="eml-input" accept=".eml,.txt">
@@ -155,7 +196,7 @@
         <div class="error-state" id="error-section">
             <i class="fas fa-exclamation-triangle"></i>
             <h5>Analysis Failed</h5>
-            <p id="error-message" style="color:#c62828;"></p>
+            <p id="error-message" style="color:#ef5350;"></p>
             <button class="btn-forensic mt-3" onclick="resetPage()">
                 <i class="fas fa-redo"></i> Try Another File
             </button>
@@ -164,83 +205,158 @@
         <!-- Results -->
         <div class="results" id="results-section">
 
-            <!-- Risk Score + Email Metadata -->
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="section-card text-center" id="risk-card">
+            <!-- ===== ROW 1: Risk + ML + Auth ===== -->
+            <div class="card-grid">
+                <!-- Risk Assessment -->
+                <div class="fcard" id="risk-card">
+                    <div class="fcard-header">
+                        <i class="fas fa-shield-halved"></i>
                         <h6>Risk Assessment</h6>
+                    </div>
+                    <div class="text-center">
                         <div class="risk-gauge" id="risk-gauge">—</div>
-                        <div id="risk-level-text" style="font-size:1.1rem; font-weight:700;">—</div>
-                        <div id="risk-score-text" style="color:#999; font-size:0.85rem; margin-top:4px;"></div>
+                        <div class="risk-verdict" id="risk-level-text">—</div>
+                        <div style="color:#8892a4; font-size:0.8rem; margin-top:2px;" id="risk-score-text">out of 100</div>
                     </div>
                 </div>
-                <div class="col-md-8">
-                    <div class="section-card">
+
+                <!-- ML Classification -->
+                <div class="fcard" id="ml-card">
+                    <div class="fcard-header">
+                        <i class="fas fa-brain"></i>
+                        <h6>ML Classification</h6>
+                    </div>
+                    <div class="text-center" style="padding: 16px 0;">
+                        <div id="ml-badge-container"></div>
+                        <div style="margin-top: 12px; color: #8892a4; font-size: 0.85rem;">
+                            Confidence: <span id="ml-confidence" style="font-weight:700; color:#e0e0e0;">—</span>
+                        </div>
+                        <div class="conf-bar" style="max-width: 250px; margin: 10px auto 0;">
+                            <div class="conf-fill" id="ml-conf-bar"></div>
+                        </div>
+                        <div style="margin-top: 12px; color: #8892a4; font-size: 0.8rem;">
+                            Model: <span id="ml-model-used" style="color:#e0e0e0;">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== ROW 2: Auth + Email Metadata ===== -->
+            <div class="card-grid">
+                <!-- Email Authentication -->
+                <div class="fcard">
+                    <div class="fcard-header">
+                        <i class="fas fa-key"></i>
+                        <h6>Email Authentication</h6>
+                    </div>
+                    <div id="auth-badges"></div>
+                    <div id="auth-all-pass" class="mt-2" style="display:none;">
+                        <span class="auth-badge auth-pass"><i class="fas fa-check-circle"></i> All checks passed</span>
+                    </div>
+                </div>
+
+                <!-- Email Metadata -->
+                <div class="fcard">
+                    <div class="fcard-header">
+                        <i class="fas fa-envelope"></i>
                         <h6>Email Metadata</h6>
-                        <table class="meta-table">
-                            <tr><td>Subject</td><td id="meta-subject">—</td></tr>
-                            <tr><td>From</td><td id="meta-from">—</td></tr>
-                            <tr><td>To</td><td id="meta-to">—</td></tr>
-                            <tr><td>Date</td><td id="meta-date">—</td></tr>
-                            <tr><td>Message-ID</td><td id="meta-msgid">—</td></tr>
-                            <tr><td>Body Length</td><td id="meta-bodylen">—</td></tr>
-                            <tr><td>ML Prediction</td><td id="meta-ml">—</td></tr>
-                        </table>
+                    </div>
+                    <table class="meta-table">
+                        <tr><td>Subject</td><td id="meta-subject">—</td></tr>
+                        <tr><td>From</td><td id="meta-from">—</td></tr>
+                        <tr><td>To</td><td id="meta-to">—</td></tr>
+                        <tr><td>Date</td><td id="meta-date">—</td></tr>
+                        <tr><td>Message-ID</td><td id="meta-msgid" style="font-family:monospace;font-size:0.78rem;">—</td></tr>
+                        <tr><td>Body Size</td><td id="meta-bodylen">—</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== ROW 3: Geolocation + Routing ===== -->
+            <div class="card-grid">
+                <!-- Geolocation -->
+                <div class="fcard" id="geo-card">
+                    <div class="fcard-header">
+                        <i class="fas fa-globe"></i>
+                        <h6>Sender IP Geolocation</h6>
+                    </div>
+                    <div class="geo-grid" id="geo-grid">
+                        <div class="geo-item">
+                            <div class="geo-label">IP Address</div>
+                            <div class="geo-value" id="geo-ip" style="font-family:monospace;">—</div>
+                        </div>
+                        <div class="geo-item">
+                            <div class="geo-label">Country</div>
+                            <div class="geo-value" id="geo-country">—</div>
+                        </div>
+                        <div class="geo-item">
+                            <div class="geo-label">City</div>
+                            <div class="geo-value" id="geo-city">—</div>
+                        </div>
+                        <div class="geo-item">
+                            <div class="geo-label">ASN / Org</div>
+                            <div class="geo-value" id="geo-org" style="font-size:0.8rem;">—</div>
+                        </div>
+                        <div class="geo-item">
+                            <div class="geo-label">Hosting</div>
+                            <div class="geo-value" id="geo-hosting">—</div>
+                        </div>
+                        <div class="geo-item">
+                            <div class="geo-label">Risk Score</div>
+                            <div class="geo-value" id="geo-risk">—</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Authentication -->
-            <div class="section-card" id="auth-card">
-                <h6><i class="fas fa-key"></i> Email Authentication</h6>
-                <div id="auth-badges"></div>
-                <div id="auth-all-pass" class="mt-2" style="display:none;">
-                    <span class="auth-badge auth-pass"><i class="fas fa-check-circle"></i> All authentication checks passed</span>
+                <!-- Routing Chain -->
+                <div class="fcard">
+                    <div class="fcard-header">
+                        <i class="fas fa-route"></i>
+                        <h6>Routing Chain</h6>
+                    </div>
+                    <div id="routing-hops"></div>
+                    <div id="routing-origin" class="mt-2" style="font-size:0.8rem; color:#8892a4;"></div>
                 </div>
             </div>
 
-            <!-- Routing Chain -->
-            <div class="section-card" id="routing-card">
-                <h6><i class="fas fa-route"></i> Routing Chain</h6>
-                <div id="routing-hops"></div>
-                <div id="routing-origin" class="mt-2" style="font-size:0.85rem; color:#666;"></div>
+            <!-- ===== ROW 4: Mismatches + Risk Breakdown ===== -->
+            <div class="card-grid">
+                <!-- Address Mismatches -->
+                <div class="fcard" id="mismatch-card">
+                    <div class="fcard-header">
+                        <i class="fas fa-exclamation-triangle" style="color:#ffa726;"></i>
+                        <h6>Address Mismatches</h6>
+                    </div>
+                    <div id="mismatch-list">
+                        <div style="color:#66bb6a; font-size:0.85rem;"><i class="fas fa-check-circle"></i> No mismatches detected</div>
+                    </div>
+                </div>
+
+                <!-- Risk Breakdown -->
+                <div class="fcard">
+                    <div class="fcard-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h6>Risk Score Breakdown</h6>
+                    </div>
+                    <div id="risk-breakdown"></div>
+                </div>
             </div>
 
-            <!-- Address Mismatches -->
-            <div class="section-card" id="mismatch-card" style="display:none;">
-                <h6><i class="fas fa-exclamation-triangle"></i> Address Mismatches</h6>
-                <div id="mismatch-list"></div>
-            </div>
-
-            <!-- Geo Location -->
-            <div class="section-card" id="geo-card" style="display:none;">
-                <h6><i class="fas fa-globe"></i> Sender IP Geolocation</h6>
-                <table class="meta-table">
-                    <tr><td>IP Address</td><td id="geo-ip">—</td></tr>
-                    <tr><td>City</td><td id="geo-city">—</td></tr>
-                    <tr><td>Country</td><td id="geo-country">—</td></tr>
-                    <tr><td>ASN / Org</td><td id="geo-org">—</td></tr>
-                    <tr><td>Hosting Provider</td><td id="geo-hosting">—</td></tr>
-                    <tr><td>Geo Risk Score</td><td id="geo-risk">—</td></tr>
-                    <tr><td>Data Source</td><td id="geo-source">—</td></tr>
-                </table>
-            </div>
-
-            <!-- URL Threat Intel -->
-            <div class="section-card" id="url-card" style="display:none;">
-                <h6><i class="fas fa-link"></i> URL Threat Intelligence</h6>
+            <!-- ===== ROW 5: URL Threat Intel (full width if present) ===== -->
+            <div class="full-card" id="url-card" style="display:none;">
+                <div class="fcard-header">
+                    <i class="fas fa-link"></i>
+                    <h6>URL Threat Intelligence</h6>
+                </div>
                 <div id="url-list"></div>
             </div>
 
-            <!-- Risk Breakdown -->
-            <div class="section-card" id="breakdown-card">
-                <h6><i class="fas fa-chart-bar"></i> Risk Score Breakdown</h6>
-                <div id="risk-breakdown"></div>
-            </div>
-
-            <!-- Body Preview -->
-            <div class="section-card">
-                <h6><i class="fas fa-file-alt"></i> Body Preview</h6>
+            <!-- ===== ROW 6: Body Preview (full width) ===== -->
+            <div class="full-card">
+                <div class="fcard-header">
+                    <i class="fas fa-file-alt"></i>
+                    <h6>Email Body Content</h6>
+                </div>
                 <div class="body-preview" id="body-preview">—</div>
             </div>
 
@@ -259,22 +375,18 @@
 
 {% block extra_scripts %}
     <script>
-    // --- Upload handling ---
     var dropZone = document.getElementById('drop-zone');
     var fileInput = document.getElementById('eml-input');
 
     dropZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
+        e.preventDefault(); dropZone.classList.add('dragover');
     });
     dropZone.addEventListener('dragleave', function() {
         dropZone.classList.remove('dragover');
     });
     dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        var files = e.dataTransfer.files;
-        if (files.length > 0) analyzeFile(files[0]);
+        e.preventDefault(); dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) analyzeFile(e.dataTransfer.files[0]);
     });
     fileInput.addEventListener('change', function() {
         if (fileInput.files.length > 0) analyzeFile(fileInput.files[0]);
@@ -282,32 +394,20 @@
 
     function analyzeFile(file) {
         if (!file.name.toLowerCase().endsWith('.eml') && !file.name.toLowerCase().endsWith('.txt')) {
-            alert('Please upload a .eml file');
-            return;
+            alert('Please upload a .eml file'); return;
         }
-
         document.getElementById('upload-section').style.display = 'none';
         document.getElementById('loading-section').classList.add('active');
         document.getElementById('loading-text').textContent = 'Analyzing ' + file.name + '...';
 
-        var formData = new FormData();
-        formData.append('file', file);
-
-        fetch('/forensic/api/analyze-eml', {
-            method: 'POST',
-            body: formData
-        })
-        .then(function(resp) { return resp.json(); })
+        var formData = new FormData(); formData.append('file', file);
+        fetch('/forensic/api/analyze-eml', { method: 'POST', body: formData })
+        .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.error) {
-                showError(data.error);
-                return;
-            }
+            if (data.error) { showError(data.error); return; }
             renderResults(data);
         })
-        .catch(function(err) {
-            showError('Network error: ' + err.message);
-        });
+        .catch(function(err) { showError('Network error: ' + err.message); });
     }
 
     function showError(msg) {
@@ -324,7 +424,6 @@
         fileInput.value = '';
     }
 
-    // --- Render results ---
     function renderResults(data) {
         document.getElementById('loading-section').classList.remove('active');
         document.getElementById('results-section').classList.add('active');
@@ -336,7 +435,7 @@
         var geo = data.geo || {};
         var ml = data.ml || {};
 
-        // Risk gauge
+        // --- Risk gauge ---
         var score = risk.risk_score || 0;
         var level = (risk.risk_level || 'Unknown').toLowerCase();
         var gauge = document.getElementById('risk-gauge');
@@ -345,88 +444,86 @@
         document.getElementById('risk-level-text').textContent = risk.risk_level || 'Unknown';
         document.getElementById('risk-level-text').style.color = getRiskColor(level);
         document.getElementById('risk-score-text').textContent = 'out of 100';
+        document.getElementById('risk-card').style.borderTop = '3px solid ' + getRiskColor(level);
 
-        // Metadata
+        // --- ML badge ---
+        var mlPred = ml.prediction || 'unknown';
+        var mlConf = ml.confidence || 0;
+        var mlClass = mlPred === 'phishing' ? 'ml-phishing' : mlPred === 'legitimate' ? 'ml-legitimate' : mlPred === 'suspicious' ? 'ml-suspicious' : 'ml-unknown';
+        var mlIcon = mlPred === 'phishing' ? 'fa-skull-crossbones' : mlPred === 'legitimate' ? 'fa-check-circle' : mlPred === 'suspicious' ? 'fa-exclamation-circle' : 'fa-question-circle';
+        document.getElementById('ml-badge-container').innerHTML =
+            '<span class="ml-badge ' + mlClass + '"><i class="fas ' + mlIcon + '"></i> ' + mlPred.toUpperCase() + '</span>';
+        document.getElementById('ml-confidence').textContent = (mlConf * 100).toFixed(1) + '%';
+        var confBar = document.getElementById('ml-conf-bar');
+        confBar.style.width = (mlConf * 100) + '%';
+        confBar.style.background = mlPred === 'phishing' ? '#ef5350' : mlPred === 'legitimate' ? '#66bb6a' : '#ffa726';
+        document.getElementById('ml-model-used').textContent = ml.model_loaded ? 'Ensemble (XGB + LGB)' : 'Not loaded';
+        document.getElementById('ml-card').style.borderTop = '3px solid ' + (mlPred === 'phishing' ? '#ef5350' : mlPred === 'legitimate' ? '#66bb6a' : '#8892a4');
+
+        // --- Auth ---
+        var authHtml = '';
+        [{l:'SPF',v:auth.spf},{l:'DKIM',v:auth.dkim},{l:'DMARC',v:auth.dmarc}].forEach(function(item) {
+            if (!item.v) return;
+            var cls = item.v === 'PASS' ? 'auth-pass' : item.v === 'FAIL' ? 'auth-fail' : item.v === 'SOFTFAIL' ? 'auth-softfail' : 'auth-missing';
+            var ico = item.v === 'PASS' ? 'check-circle' : item.v === 'FAIL' ? 'times-circle' : 'question-circle';
+            authHtml += '<span class="auth-badge ' + cls + '"><i class="fas fa-' + ico + '"></i> ' + item.l + ': ' + item.v + '</span>';
+        });
+        document.getElementById('auth-badges').innerHTML = authHtml;
+        document.getElementById('auth-all-pass').style.display = auth.all_pass ? '' : 'none';
+
+        // --- Metadata ---
         document.getElementById('meta-subject').textContent = data.subject || '—';
         document.getElementById('meta-from').textContent = data.from || '—';
         document.getElementById('meta-to').textContent = data.to || '—';
         document.getElementById('meta-date').textContent = data.date || '—';
         document.getElementById('meta-msgid').textContent = data.email_id || '—';
-        document.getElementById('meta-bodylen').textContent = (data.body_length || 0).toLocaleString() + ' characters';
-        document.getElementById('meta-ml').innerHTML =
-            '<span style="font-weight:700;color:' + (ml.prediction === 'phishing' ? '#c62828' : ml.prediction === 'legitimate' ? '#2e7d32' : '#666') + '">' +
-            (ml.prediction || 'unknown').toUpperCase() + '</span>' +
-            ' (' + ((ml.confidence || 0) * 100).toFixed(1) + '% confidence)' +
-            (ml.model_loaded ? '' : ' <span style="color:#999;font-size:0.8rem;">[model not loaded]</span>');
+        document.getElementById('meta-bodylen').textContent = (data.body_length || 0).toLocaleString() + ' chars';
 
-        // Auth badges
-        var authHtml = '';
-        var authItems = [
-            { label: 'SPF', value: auth.spf },
-            { label: 'DKIM', value: auth.dkim },
-            { label: 'DMARC', value: auth.dmarc }
-        ];
-        authItems.forEach(function(item) {
-            if (!item.value) return;
-            var cls = 'auth-missing';
-            if (item.value === 'PASS') cls = 'auth-pass';
-            else if (item.value === 'FAIL') cls = 'auth-fail';
-            else if (item.value === 'SOFTFAIL') cls = 'auth-softfail';
-            authHtml += '<span class="auth-badge ' + cls + '"><i class="fas fa-' +
-                (item.value === 'PASS' ? 'check-circle' : item.value === 'FAIL' ? 'times-circle' : 'question-circle') +
-                '"></i> ' + item.label + ': ' + item.value + '</span>';
-        });
-        document.getElementById('auth-badges').innerHTML = authHtml;
-        document.getElementById('auth-all-pass').style.display = auth.all_pass ? '' : 'none';
-
-        // Routing hops
+        // --- Routing hops ---
         var hops = routing.hops || [];
         var hopsHtml = '';
         hops.forEach(function(hop) {
-            var suspClass = hop.suspicious ? ' suspicious' : '';
-            var geoStr = hop.geo ? ' — ' + (hop.geo.city || '') + ', ' + (hop.geo.country || '') + (hop.geo.org ? ' (' + hop.geo.org + ')' : '') : '';
-            hopsHtml += '<div class="hop-item' + suspClass + '">' +
+            var sc = hop.suspicious ? ' suspicious' : '';
+            var geoStr = hop.geo ? ' — ' + (hop.geo.city || '') + ', ' + (hop.geo.country || '') : '';
+            hopsHtml += '<div class="hop-item' + sc + '">' +
                 '<div class="hop-number">' + hop.hop_number + '</div>' +
                 '<div class="hop-detail">' +
-                    '<div class="hop-host">' + (hop.from_host || '?') + ' → ' + (hop.by_host || '?') + '</div>' +
+                    '<div class="hop-host">' + (hop.from_host || '?') + ' &rarr; ' + (hop.by_host || '?') + '</div>' +
                     (hop.ip ? '<div class="hop-ip">' + hop.ip + '</div>' : '') +
-                    (geoStr ? '<div class="hop-geo"><i class="fas fa-map-pin"></i>' + geoStr + '</div>' : '') +
+                    (geoStr ? '<div class="hop-geo"><i class="fas fa-map-pin"></i> ' + geoStr + '</div>' : '') +
                     (hop.suspicious_reasons && hop.suspicious_reasons.length ?
-                        '<div style="color:#c62828;font-size:0.78rem;"><i class="fas fa-exclamation-triangle"></i> ' +
+                        '<div style="color:#ef5350;font-size:0.75rem;margin-top:2px;"><i class="fas fa-exclamation-triangle"></i> ' +
                         hop.suspicious_reasons.join(', ') + '</div>' : '') +
                 '</div></div>';
         });
-        document.getElementById('routing-hops').innerHTML = hopsHtml || '<div style="color:#999;">No routing headers found</div>';
-        document.getElementById('routing-origin').textContent = routing.origin_ip ?
-            'Origin IP: ' + routing.origin_ip + (routing.suspicious ? ' (suspicious)' : '') : '';
+        document.getElementById('routing-hops').innerHTML = hopsHtml || '<div style="color:#8892a4;font-size:0.85rem;">No routing headers found</div>';
+        document.getElementById('routing-origin').textContent = routing.origin_ip ? 'Origin: ' + routing.origin_ip : '';
 
-        // Mismatches
+        // --- Mismatches ---
         var mismatches = forensic.mismatches || [];
         if (mismatches.length > 0) {
-            document.getElementById('mismatch-card').style.display = '';
             var mmHtml = '';
             mismatches.forEach(function(mm) {
                 var cls = mm.severity === 'HIGH' ? ' high' : '';
                 mmHtml += '<div class="mismatch-item' + cls + '">' +
-                    '<strong>' + mm.type.replace(/_/g, ' ') + '</strong> (' + mm.severity + ')<br>' +
-                    '<span style="font-size:0.82rem;color:#666;">' + mm.detail + '</span></div>';
+                    '<strong style="color:#ffa726;">' + mm.type.replace(/_/g, ' ') + '</strong> <span style="color:#8892a4;font-size:0.75rem;">(' + mm.severity + ')</span><br>' +
+                    '<span style="font-size:0.8rem;color:#8892a4;">' + mm.detail + '</span></div>';
             });
             document.getElementById('mismatch-list').innerHTML = mmHtml;
         }
 
-        // Geo
+        // --- Geo ---
         if (geo.ip && geo.source !== 'unknown') {
             document.getElementById('geo-card').style.display = '';
             document.getElementById('geo-ip').textContent = geo.ip || '—';
             document.getElementById('geo-city').textContent = geo.city || '—';
             document.getElementById('geo-country').textContent = (geo.country || '—') + (geo.country_code ? ' (' + geo.country_code + ')' : '');
             document.getElementById('geo-org').textContent = geo.org || '—';
-            document.getElementById('geo-hosting').textContent = geo.is_hosting ? 'Yes (cloud/VPS)' : 'No';
+            document.getElementById('geo-hosting').innerHTML = geo.is_hosting ? '<span style="color:#ffa726;">Yes (cloud/VPS)</span>' : '<span style="color:#66bb6a;">No</span>';
             document.getElementById('geo-risk').textContent = (geo.risk_score || 0) + '/100 (tier ' + (geo.risk_tier || 0) + ')';
-            document.getElementById('geo-source').textContent = geo.source || '—';
         }
 
-        // URLs
+        // --- URLs ---
         var urls = data.urls_found || [];
         var urlResults = data.url_results || {};
         if (urls.length > 0) {
@@ -435,77 +532,60 @@
             urls.forEach(function(url) {
                 var r = urlResults[url] || {};
                 var tiScore = r.threat_score || 0;
-                var tiColor = tiScore > 50 ? '#c62828' : tiScore > 20 ? '#e65100' : '#2e7d32';
+                var tiColor = tiScore > 50 ? '#ef5350' : tiScore > 20 ? '#ffa726' : '#66bb6a';
                 urlHtml += '<div class="url-item">' +
-                    '<span class="url-score" style="color:' + tiColor + '">Score: ' + tiScore + '</span>' +
+                    '<span class="url-score" style="color:' + tiColor + ';">Score: ' + tiScore + '</span>' +
                     '<div class="url-text">' + escapeHtml(url) + '</div>' +
-                    '<div style="font-size:0.78rem;color:#999;">' +
+                    '<div style="font-size:0.75rem;color:#8892a4;margin-top:4px;">' +
                     'VT: ' + (r.virustotal || 'N/A') +
-                    ' | SafeBrowsing: ' + (r.safe_browsing || 'N/A') +
-                    ' | PhishTank: ' + (r.phishtank || 'N/A') +
+                    ' &middot; SafeBrowsing: ' + (r.safe_browsing || 'N/A') +
+                    ' &middot; PhishTank: ' + (r.phishtank || 'N/A') +
                     '</div></div>';
             });
             document.getElementById('url-list').innerHTML = urlHtml;
         }
 
-        // Risk breakdown bars
+        // --- Risk breakdown ---
         var breakdown = risk.breakdown || {};
-        var weights = risk.weights || {};
-        var breakdownHtml = '';
         var barLabels = {
-            ml_prediction: 'ML Prediction',
-            threat_intel: 'Threat Intel',
-            authentication: 'Authentication',
-            geolocation: 'Geolocation',
-            forensic: 'Forensic Trust',
-            content: 'Content Analysis'
+            ml_prediction: 'ML Prediction', threat_intel: 'Threat Intel',
+            authentication: 'Authentication', geolocation: 'Geolocation',
+            forensic: 'Forensic Trust', content: 'Content Analysis'
         };
+        var bHtml = '';
         for (var key in barLabels) {
             var val = breakdown[key] || 0;
-            var w = weights[key] || 0;
-            var barColor = val > 70 ? '#c62828' : val > 40 ? '#f57c00' : val > 20 ? '#fbc02d' : '#388e3c';
-            breakdownHtml += '<div class="risk-bar-row">' +
+            var barColor = val > 70 ? '#ef5350' : val > 40 ? '#ffa726' : val > 20 ? '#ffeb3b' : '#66bb6a';
+            bHtml += '<div class="risk-bar-row">' +
                 '<div class="risk-bar-label">' + barLabels[key] + '</div>' +
                 '<div class="risk-bar-track"><div class="risk-bar-fill" style="width:' + val + '%;background:' + barColor + ';"></div></div>' +
-                '<div class="risk-bar-value">' + val + '</div>' +
-                '</div>';
+                '<div class="risk-bar-value">' + val + '</div></div>';
         }
-        document.getElementById('risk-breakdown').innerHTML = breakdownHtml;
+        document.getElementById('risk-breakdown').innerHTML = bHtml;
 
-        // Body preview
+        // --- Body ---
         document.getElementById('body-preview').textContent = data.body_preview || '(empty)';
 
-        // PDF link
+        // --- PDF ---
         if (data.scan_id) {
             var pdfBtn = document.getElementById('btn-pdf');
             pdfBtn.href = '/forensic/api/report/pdf/' + data.scan_id;
             pdfBtn.style.display = '';
         }
-
-        // Border color based on risk
-        document.getElementById('risk-card').className = 'section-card text-center ' +
-            (level === 'critical' || level === 'high' ? 'phishing-border' : 'safe-border');
     }
 
-    // --- Helpers ---
     function getRiskColor(level) {
-        var colors = { critical: '#c62828', high: '#f57c00', medium: '#f9a825', low: '#2e7d32', safe: '#1565c0' };
-        return colors[level] || '#666';
+        return { critical:'#ef5350', high:'#ff9800', medium:'#ffeb3b', low:'#66bb6a', safe:'#42a5f5' }[level] || '#8892a4';
     }
     function getRiskGradient(level) {
-        var gradients = {
-            critical: 'linear-gradient(135deg, #b71c1c, #c62828)',
-            high: 'linear-gradient(135deg, #e65100, #f57c00)',
-            medium: 'linear-gradient(135deg, #f9a825, #fbc02d)',
-            low: 'linear-gradient(135deg, #1b5e20, #388e3c)',
-            safe: 'linear-gradient(135deg, #0d47a1, #1976d2)'
-        };
-        return gradients[level] || 'linear-gradient(135deg, #666, #999)';
+        return {
+            critical:'linear-gradient(135deg,#b71c1c,#ef5350)',
+            high:'linear-gradient(135deg,#e65100,#ff9800)',
+            medium:'linear-gradient(135deg,#f9a825,#ffeb3b)',
+            low:'linear-gradient(135deg,#1b5e20,#66bb6a)',
+            safe:'linear-gradient(135deg,#0d47a1,#42a5f5)'
+        }[level] || 'linear-gradient(135deg,#666,#999)';
     }
-    function escapeHtml(str) {
-        var div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     </script>
 {% endblock %}
