@@ -15,25 +15,29 @@ jobs:
   ping:
     name: Ping health endpoint
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 12
 
     steps:
-      - name: Ping /api/health
+      - name: Ping /api/health (retry through cold starts)
         run: |
-          echo "Pinging https://sih26106-email-forensics.onrender.com/api/health ..."
-          RESPONSE=$(curl --silent --show-error --max-time 30 \
-            --write-out "\nHTTP_STATUS:%{http_code} TIME:%{time_total}s" \
-            https://sih26106-email-forensics.onrender.com/api/health)
-          echo "$RESPONSE"
+          URL="https://sih26106-email-forensics.onrender.com/api/health"
 
-          # Extract HTTP status code
-          HTTP_STATUS=$(echo "$RESPONSE" | grep -o 'HTTP_STATUS:[0-9]*' | cut -d: -f2)
+          # A sleeping Render free instance can take 60s+ to boot, so a single
+          # 30s request times out during cold starts. Retry across a few minutes
+          # so the first attempt warms the instance and a later one verifies it.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            CODE=$(curl --silent --output /tmp/health_body.txt \
+                  --write-out "%{http_code}" --max-time 45 "$URL") || CODE="000"
+            if [ "$CODE" = "200" ]; then
+              echo "✅ Service is up (HTTP $CODE, attempt $attempt)"
+              exit 0
+            fi
+            echo "⚠️  Attempt $attempt: HTTP ${CODE}; retrying in 20s..."
+            sleep 20
+          done
 
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Service is up (HTTP $HTTP_STATUS)"
-          else
-            echo "⚠️  Unexpected status: HTTP $HTTP_STATUS"
-            # Don't fail the workflow — a non-200 just means Render is mid-restart.
-            # The next ping in 10 minutes will catch it when it's back.
-            exit 0
-          fi
+          # Best-effort keep-alive: never fail the workflow over a cold start.
+          # If the service is genuinely down, the next run in 10 minutes retries.
+          echo "⚠️  Service did not return HTTP 200 after 8 attempts."
+          echo "    Treating as non-fatal (cold start / mid-deploy)."
+          exit 0
