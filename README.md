@@ -1,4 +1,88 @@
-# 🛡️ AI-Powered Email Threat Detection, GeoLocation & Forensic Intelligence Platform
+# Mailforensic Ai Sih26106
+
+![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-Python-informational) ![Docker](https://img.shields.io/badge/docker-ready-2496ed) ![Deploy](https://img.shields.io/badge/deploy-Render-46e3b7)
+
+
+## 📌 Overview
+
+AI-powered email threat detection, geolocation and forensic intelligence platform — SIH 2026, AICTE problem statement (Team Mutex)
+
+## 🏗️ Architecture
+
+```text
+Browser / UI
+     │   HTTP
+     ▼
+Flask, WebSockets (Flask-SocketIO) app (handlers: api, dashboard, email, forensic)
+     │
+     ├──▶ Services — email_scanner, forensic_analyzer, forensic_report, gemini_service, geo_service, gmail_service, …
+     ├──▶ Database — SQLite
+     └──▶ External services — Google Gemini, VirusTotal, Google Safe Browsing, AbuseIPDB, Gmail API, Google APIs, GeoIP · ML models — scikit-learn, XGBoost, LightGBM, PyTorch, Transformers
+```
+
+## 🧰 Tech Stack
+
+- **Language:** Python
+- **Backend:** Flask, WebSockets (Flask-SocketIO)
+- **Database:** SQLite
+- **ML:** scikit-learn, XGBoost, LightGBM, PyTorch, Transformers
+- **Integrations:** Google Gemini, VirusTotal, Google Safe Browsing, AbuseIPDB, Gmail API, Google APIs, GeoIP
+- **Deployment:** Docker container / Render (render.yaml)
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+- Docker (optional, for container runs)
+
+### 1. Clone
+
+```bash
+git clone https://github.com/SabarishR08/mailforensic-ai-sih26106.git
+cd mailforensic-ai-sih26106
+```
+
+### 2. Install dependencies
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 3. Configure environment
+
+```bash
+cp .env.example .env   # then fill in values
+```
+
+Environment variables used: `GEMINI_API_KEY`, `VIRUSTOTAL_API_KEY`, `SAFE_BROWSING_API_KEY`, `ABUSEIPDB_API_KEY`, `GMAIL_CREDENTIALS_JSON`, `GMAIL_REFRESH_TOKEN`, `FLASK_SECRET_KEY`, `DEBUG_MODE`, `PORT`.
+
+External services involved: Google Gemini, VirusTotal, Google Safe Browsing, AbuseIPDB, Gmail API, Google APIs, GeoIP.
+
+### 4. Run
+
+```bash
+python backend/app.py
+```
+
+```bash
+python backend/routes/dashboard.py
+```
+
+### (Alternative) Run with Docker
+
+```bash
+docker compose up --build
+```
+
+## ☁️ Deployment
+
+Defined in `render.yaml` (web service `ai-email-forensics`) with `autoDeploy` enabled — pushes to the default branch trigger a Render deploy.
+
+
+---
 
 > **SIH26106** — Smart India Hackathon 2026 | AICTE Problem Statement
 > **Team Mutex** — [Live Demo](https://sih26106-email-forensics.onrender.com/dashboard)
@@ -437,3 +521,9 @@ This project was developed for **Smart India Hackathon 2026** (SIH26106). For ac
   <a href="https://github.com/SabarishR08/sih26106">GitHub</a> •
   <a href="https://colab.research.google.com/drive/1Rqz3TkPnmXebt8jz39oWvjM6Q-P4J-T1">Colab</a>
 </p>
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) — © 2026 Sabarish R.
