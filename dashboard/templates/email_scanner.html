@@ -31,6 +31,7 @@
                     </button>
                 </div>
                 <div id="gmail-status" class="text-muted" style="font-size:0.85rem"></div>
+                <div id="gmail-help" class="mt-2 p-3 rounded-3 d-none" style="font-size:0.8rem; border:1px solid var(--border-default); background: var(--bg-input);"></div>
                 <div class="mt-auto pt-2">
                     <small class="text-warning" style="font-size: 0.78rem;">
                         <i class="fas fa-exclamation-triangle me-1"></i> Requires Gmail API credentials
@@ -451,6 +452,8 @@ function scanGmail() {
     var count = document.getElementById('email-count').value;
     var status = document.getElementById('gmail-status');
     var btn = document.getElementById('btn-gmail-scan');
+    var help = document.getElementById('gmail-help');
+    if (help) help.className = 'd-none';
     window.morphButton(btn, 'loading', 'Scanning Inbox...');
     status.textContent = 'Connecting to Gmail and fetching emails...';
     status.className = 'text-cyan';
@@ -462,12 +465,34 @@ function scanGmail() {
     }).then(r => r.json()).then(data => {
         if (data.error) {
             window.morphButton(btn, 'error', 'Scan Failed');
-            status.textContent = '❌ ' + data.error;
-            status.className = 'text-danger';
+            var help = document.getElementById('gmail-help');
+            if (data.code === 'gmail_not_configured') {
+                status.innerHTML = '❌ <b>Gmail is not connected on this server.</b>';
+                status.className = 'text-danger';
+                if (help) {
+                    help.className = 'mt-2 p-3 rounded-3 text-danger';
+                    help.style.cssText = 'font-size:0.8rem; border:1px solid rgba(244,63,94,0.3); background: var(--bg-input);';
+                    help.innerHTML = '<i class="fas fa-cog me-1"></i> To enable live inbox scans, the admin must set <code>GMAIL_CREDENTIALS_JSON</code> and <code>GMAIL_REFRESH_TOKEN</code> env vars (or place <code>credentials/credentials.json</code>) and restart. For a no-setup demo, use <b>Test with Sample Data</b> below — it needs no credentials.';
+                }
+            } else if (data.code === 'gmail_empty') {
+                status.innerHTML = '⚠️ Gmail connected, but returned 0 messages.';
+                status.className = 'text-warning';
+                if (help) {
+                    help.className = 'mt-2 p-3 rounded-3 text-warning';
+                    help.style.cssText = 'font-size:0.8rem; border:1px solid rgba(251,191,36,0.3); background: var(--bg-input);';
+                    help.innerHTML = '<i class="fas fa-info-circle me-1"></i> Confirm the connected account has mail and that the OAuth scope includes read access. Meanwhile, <b>Test with Sample Data</b> works instantly without credentials.';
+                }
+            } else {
+                status.innerHTML = '❌ ' + data.error;
+                status.className = 'text-danger';
+                if (help) help.className = 'd-none';
+            }
         } else {
             window.morphButton(btn, 'success', 'Scan Complete');
             status.textContent = '✅ Scanned ' + data.count + ' real emails from Gmail';
             status.className = 'text-success';
+            var help = document.getElementById('gmail-help');
+            if (help) help.className = 'd-none';
             renderResults(data.results, 'Gmail Live Scan');
         }
     }).catch(err => {

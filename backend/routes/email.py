@@ -71,9 +71,16 @@ def demo_page():
 @email_bp.route('/api/scan/gmail', methods=['POST'])
 def scan_gmail():
     limit = request.json.get('limit', 5) if request.is_json else 5
-    emails = fetch_recent_emails(limit=limit)
+    try:
+        emails = fetch_recent_emails(limit=limit)
+    except FileNotFoundError:
+        logger.warning('Gmail API is not configured on this server')
+        return jsonify({'code': 'gmail_not_configured', 'error': 'Gmail API is not configured on this server. Add GMAIL_CREDENTIALS_JSON and GMAIL_REFRESH_TOKEN environment variables (or a local credentials.json), then restart.', 'results': []}), 200
+    except Exception as e:
+        logger.error(f'Gmail fetch failed: {e}')
+        return jsonify({'code': 'gmail_error', 'error': f'Gmail connection failed: {str(e)[:200]}', 'results': []}), 200
     if not emails:
-        return jsonify({'error': 'No emails fetched. Check Gmail credentials.', 'results': []}), 200
+        return jsonify({'code': 'gmail_empty', 'error': 'Connected to Gmail but it returned 0 messages. Confirm the account has mail and the Gmail API scope includes read access.', 'results': []}), 200
 
     loop = asyncio.new_event_loop()
     results = loop.run_until_complete(scan_emails(emails, limit=limit))
