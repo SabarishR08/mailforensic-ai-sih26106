@@ -18,6 +18,7 @@ if str(project_root) not in sys.path:
 
 from backend.models import db
 from backend.extensions import socketio
+from backend.spa import spa_enabled, spa_index, spa_assets
 
 
 def create_app():
@@ -32,6 +33,10 @@ def create_app():
     db.init_app(app)
     socketio.init_app(app)
 
+    # Serve built React SPA assets (/assets/...) when present
+    if spa_enabled():
+        app.add_url_rule('/assets/<path:filename>', endpoint='spa_assets', view_func=spa_assets)
+
     # Register blueprints
     from backend.routes.dashboard import dashboard_bp
     from backend.routes.email import email_bp
@@ -45,6 +50,8 @@ def create_app():
 
     @app.route('/')
     def home():
+        if spa_enabled():
+            return spa_index()
         return redirect(url_for('dashboard.dashboard'))
 
     with app.app_context():

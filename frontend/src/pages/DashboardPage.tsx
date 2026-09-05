@@ -1,0 +1,209 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import L from 'leaflet'
+import { api, ScanRow } from '../lib/api'
+import { fmtClock, predBadgeBg, riskBadgeBg, riskClass } from '../lib/format'
+
+type Stats = { total_scans: number; phishing_detected: number; total_threats: number }
+
+const GEO_COLOR: Record<string, string> = {
+  Critical: '#d32f2f',
+  High: '#f57c00',
+}
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [scans, setScans] = useState<ScanRow[]>([])
+  const [mlOnline, setMlOnline] = useState<boolean | null>(null)
+  const [geoPoints, setGeoPoints] = useState<any[]>([])
+  const [error, setError] = useState('')
+  const mapRef = useRef<L.Map | null>(null)
+  const markersRef = useRef<L.CircleMarker[]>([])
+
+  // Load stats + scans + health once
+  useEffect(() => {
+    api
+      .stats()
+      .then(setStats)
+      .catch((e) => setError(String(e.message || e)))
+    api
+      .recentScans(20)
+      .then((d) => setScans(d.scans || []))
+      .catch(() => setScans([]))
+    api.health().then(
+      () => setMlOnline(true),
+      () => setMlOnline(false),
+    )
+    api
+      .geoThreats()
+      .then((d) => setGeoPoints(d.points || []))
+      .catch(() => setGeoPoints([]))
+  }, [])
+
+  // Mini geo map — init once, then render circles as points arrive
+  useEffect(() => {
+    if (mapRef.current) return
+    const el = document.getElementById('geo-map')
+    if (!el) return
+    const map = L.map(el).setView([20, 0], 2)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map)
+    mapRef.current = map
+    return () => {
+      map.remove()
+      mapRef.current = null
+      markersRef.current = []
+    }
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || geoPoints.length === 0) return
+    markersRef.current.forEach((m) => map.removeLayer(m))
+    markersRef.current = []
+    geoPoints.forEach((p) => {
+      const color = GEO_COLOR[p.risk_level] || '#fbc02d'
+      const marker = L.circleMarker([p.lat, p.lon], {
+        radius: 6,
+        color,
+        fillColor: color,
+        fillOpacity: 0.7,
+      })
+        .bindPopup(
+          `<b>${p.city || ''}, ${p.country || ''}</b><br>Risk: ${p.risk_level} (${p.risk_score})`,
+        )
+        .addTo(map)
+      markersRef.current.push(marker)
+    })
+  }, [geoPoints])
+
+  return (
+    <div className="container-fluid">
+      <h4 className="mb-4">
+        <i className="fas fa-chart-line"></i> Threat Overview
+      </h4>
+
+      {error && (
+        <div className="alert alert-danger py-2">
+          <i className="fas fa-exclamation-triangle"></i> {error}
+        </div>
+      )}
+
+      <div className="row mb-4 g-3">
+        <div className="col-md-3">
+          <div className="card stat-card h-100">
+            <div className="number">{stats?.total_scans ?? '—'}</div>
+            <div className="label">Total Emails Scanned</div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card stat-card h-100">
+            <div className="number text-danger">{stats?.phishing_detected ?? '—'}</div>
+            <div className="label">Phishing Detected</div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card stat-card h-100">
+            <div className="number text-warning">{stats?.total_threats ?? '—'}</div>
+            <div className="label">High/Critical Threats</div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card stat-card h-100">
+            <div className={'number ' + (mlOnline === true ? 'text-success' : mlOnline === false ? 'text-danger' : '')}>
+              {mlOnline === true ? '✓ Online' : mlOnline === false ? '✗ Offline' : '—'}
+            </div>
+            <div className="label">ML Model Status</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-3">
+        <div className="col-md-8">
+          <div className="card p-4">
+            <h6>
+              <i className="fas fa-list"></i> Recent Email Scans
+            </h6>
+            <div className="table-responsive">
+              <table className="table table-sm mt-3">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Email</th>
+                    <th>ML Prediction</th>
+                    <th>Risk</th>
+                    <th>Trust</th>
+                    <th>Geo</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scans.map((s) => (
+                    <tr key={s.id}>
+                      <td className="text-muted" style={{ fontSize: '0.8rem' }}>
+                        {fmtClock(s.timestamp) || '-'}
+                      </td>
+                      <td style={{ wordBreak: 'break-all' }}>{String(s.email_id || '').slice(0, 40)}</td>
+                      <td>
+                        <span className={'badge bg-' + predBadgeBg(s.ml_prediction)}>{s.ml_prediction}</span>
+                      </td>
+                      <td>
+                        <span className={'badge-risk ' + riskClass(s.risk_level)}>
+                          {s.risk_level} ({s.risk_score})
+                        </span>
+                      </td>
+                      <td>{s.forensic_trust_score ?? 0}/100</td>
+                      <td>{s.geo_country || '-'}</td>
+                      <td>
+                        <Link to={`/forensic/report/${s.id}`} className="btn btn-sm btn-outline-primary">
+                          <i className="fas fa-search"></i>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                  {scans.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center text-muted py-4">
+                        No scans yet. Go to{' '}
+                        <Link to="/email/scan">Email Scanner</Link> to begin.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-4">
+          <div className="card p-4 mb-3">
+            <h6>
+              <i className="fas fa-globe"></i> Threat Origins
+            </h6>
+            <div
+              id="geo-map"
+              style={{ height: 250, borderRadius: 8, marginTop: 10, background: '#12141c' }}
+            />
+            {geoPoints.length === 0 && (
+              <div className="text-muted text-center mt-2" style={{ fontSize: '0.8rem' }}>
+                No geolocated threats yet
+              </div>
+            )}
+          </div>
+          <div className="card p-4">
+            <h6>
+              <i className="fas fa-info-circle"></i> Quick Actions
+            </h6>
+            <Link to="/email/scan" className="btn btn-primary w-100 mt-2">
+              <i className="fas fa-envelope"></i> Scan Gmail
+            </Link>
+            <Link to="/threat-map" className="btn btn-outline-secondary w-100 mt-2">
+              <i className="fas fa-map"></i> View Full Map
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
