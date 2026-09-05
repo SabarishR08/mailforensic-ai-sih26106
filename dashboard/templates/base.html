@@ -924,6 +924,28 @@
             .main-content { margin-left: 70px; padding: 20px 16px; }
         }
 
+        /* Desktop (>=992px): pin the sidebar as a persistent rail so the
+           drawer + blur backdrop never cover the page content. */
+        @media (min-width: 992px) {
+            .sidebar {
+                transform: translateX(0);
+            }
+            body:not(.sidebar-open) .sidebar {
+                transform: translateX(0);
+            }
+            .sidebar-backdrop {
+                display: none !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            .sidebar-toggle-btn {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: var(--sidebar-width) !important;
+            }
+        }
+
         @media (pointer: coarse) {
             #cursor-light { display: none !important; }
             .btn-magnetic { transform: none !important; }
