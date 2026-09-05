@@ -3,49 +3,61 @@
 {% block extra_head %}
 <style>
   .main-content { padding: 0 !important; margin-left: var(--sidebar-width) !important; overflow: hidden; }
-  .map-wrapper { display: flex; height: calc(100vh - 0px); }
-  #map { flex: 1; z-index: 1; }
+  .map-wrapper { display: flex; height: 100vh; }
+  #map { flex: 1; z-index: 1; background: var(--bg-canvas); }
   .map-sidebar {
-    width: 340px; background: #1a1d23; color: #e0e0e0;
-    overflow-y: auto; padding: 16px; border-left: 1px solid #2a2d35;
+    width: 360px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    overflow-y: auto; padding: 24px 20px;
+    border-left: 1px solid var(--border-default);
     font-size: 13px;
+    z-index: 10;
   }
-  .map-sidebar h5 { color: #fff; margin-bottom: 12px; font-size: 14px; }
-  .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2a2d35; }
-  .stat-label { color: #888; }
-  .stat-value { color: #fff; font-weight: 600; }
-  .country-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-  .country-bar .bar { flex: 1; height: 8px; background: #2a2d35; border-radius: 4px; overflow: hidden; }
-  .country-bar .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-  .country-bar .bar-label { min-width: 30px; text-align: right; font-size: 11px; color: #888; }
-  .country-bar .bar-name { min-width: 90px; font-size: 12px; }
-  .live-feed { max-height: 250px; overflow-y: auto; }
-  .feed-item { padding: 8px; margin: 4px 0; background: #22252b; border-radius: 6px; border-left: 3px solid; }
-  .feed-item.critical { border-color: #e74c3c; }
-  .feed-item.high { border-color: #e67e22; }
-  .feed-item.medium { border-color: #f1c40f; }
-  .feed-item.low { border-color: #3498db; }
-  .feed-item .feed-from { font-weight: 600; color: #fff; font-size: 12px; }
-  .feed-item .feed-subject { color: #aaa; font-size: 11px; margin-top: 2px; }
-  .feed-item .feed-meta { color: #666; font-size: 10px; margin-top: 4px; }
-  .risk-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-  .risk-Critical { background: #e74c3c33; color: #e74c3c; }
-  .risk-High { background: #e67e2233; color: #e67e22; }
-  .risk-Medium { background: #f1c40f33; color: #f1c40f; }
-  .risk-Low { background: #3498db33; color: #3498db; }
-  .risk-Safe { background: #2ecc7133; color: #2ecc71; }
-  .layer-toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-  .layer-toggle input[type=checkbox] { accent-color: #3498db; }
-  .layer-toggle label { cursor: pointer; font-size: 12px; }
-  .section-divider { border-top: 1px solid #2a2d35; margin: 12px 0; }
-  .leaflet-popup-content-wrapper { background: #1a1d23; color: #e0e0e0; border-radius: 8px; }
-  .leaflet-popup-tip { background: #1a1d23; }
-  .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
-  .popup-row { font-size: 12px; margin: 3px 0; color: #aaa; }
-  .popup-row strong { color: #fff; }
-  .pred-legend { display: flex; gap: 12px; margin: 6px 0; }
-  .pred-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; }
-  .pred-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .map-sidebar h5 {
+    color: var(--text-primary); margin-bottom: 14px; font-size: 0.85rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+  }
+  .map-sidebar h5 i { color: var(--accent-cyan); }
+  .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-default); }
+  .stat-label { color: var(--text-muted); font-size: 0.82rem; }
+  .stat-value { color: var(--text-primary); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .country-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .country-bar .bar { flex: 1; height: 6px; background: var(--bg-panel); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-default); }
+  .country-bar .bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan)); transition: width 0.5s ease; }
+  .country-bar .bar-label { min-width: 30px; text-align: right; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .country-bar .bar-name { min-width: 90px; font-size: 12px; color: var(--text-primary); font-weight: 500; }
+  .live-feed { max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .feed-item {
+    padding: 10px 12px; margin: 6px 0; background: var(--bg-panel);
+    border-radius: 8px; border-left: 3px solid var(--border-default); transition: all 0.2s ease;
+  }
+  .feed-item:hover { background: var(--bg-card); transform: translateX(2px); }
+  .feed-item.critical { border-color: var(--status-danger); }
+  .feed-item.high { border-color: #F97316; }
+  .feed-item.medium { border-color: var(--status-warning); }
+  .feed-item.low { border-color: var(--accent-cyan); }
+  .feed-item .feed-from { font-weight: 600; color: var(--text-primary); font-size: 12px; }
+  .feed-item .feed-subject { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+  .feed-item .feed-meta { color: var(--text-secondary); font-size: 10px; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .layer-toggle { display: flex; align-items: center; gap: 10px; margin: 8px 0; cursor: pointer; }
+  .layer-toggle input[type=checkbox] { accent-color: var(--accent-violet); width: 16px; height: 16px; cursor: pointer; }
+  .layer-toggle label { cursor: pointer; font-size: 12px; color: var(--text-primary); font-weight: 500; }
+  .section-divider { border-top: 1px solid var(--border-default); margin: 16px 0; }
+  .leaflet-popup-content-wrapper {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-default);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  }
+  .leaflet-popup-tip { background: var(--bg-panel); }
+  .popup-title { font-weight: 800; font-size: 14px; margin-bottom: 6px; color: var(--text-primary); }
+  .popup-row { font-size: 12px; margin: 4px 0; color: var(--text-muted); }
+  .popup-row strong { color: var(--text-primary); }
+  .pred-legend { display: flex; gap: 14px; margin: 8px 0; }
+  .pred-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .pred-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {% endblock %}
@@ -54,7 +66,7 @@
 <div class="map-wrapper">
   <div id="map"></div>
   <div class="map-sidebar">
-    <h5><i class="fas fa-globe-americas"></i> THREAT MAP</h5>
+    <h5 class="headline-slide-front"><i class="fas fa-globe-americas me-2"></i> THREAT MAP</h5>
 
     <div class="stat-row">
       <span class="stat-label">Total Scans</span>
@@ -72,9 +84,9 @@
     <div class="section-divider"></div>
     <h5><i class="fas fa-circle" style="font-size:8px"></i> Legend</h5>
     <div class="pred-legend">
-      <div class="pred-legend-item"><div class="pred-dot" style="background:#e74c3c"></div> Phishing</div>
-      <div class="pred-legend-item"><div class="pred-dot" style="background:#2ecc71"></div> Legitimate</div>
-      <div class="pred-legend-item"><div class="pred-dot" style="background:#f39c12"></div> Unknown</div>
+      <div class="pred-legend-item"><div class="pred-dot" style="background:var(--status-danger)"></div> Phishing</div>
+      <div class="pred-legend-item"><div class="pred-dot" style="background:var(--status-safe)"></div> Legitimate</div>
+      <div class="pred-legend-item"><div class="pred-dot" style="background:var(--status-warning)"></div> Unknown</div>
     </div>
 
     <div class="section-divider"></div>
@@ -95,19 +107,19 @@
     <div class="section-divider"></div>
     <h5><i class="fas fa-clock"></i> Time Range</h5>
     <div style="display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="btn btn-sm btn-outline-light time-btn active" onclick="setTimeRange(1, this)">24h</button>
-      <button class="btn btn-sm btn-outline-light time-btn" onclick="setTimeRange(7, this)">7d</button>
-      <button class="btn btn-sm btn-outline-light time-btn" onclick="setTimeRange(30, this)">30d</button>
-      <button class="btn btn-sm btn-outline-light time-btn" onclick="setTimeRange(365, this)">All</button>
+      <button class="btn btn-sm btn-outline-secondary time-btn active" onclick="setTimeRange(1, this)">24h</button>
+      <button class="btn btn-sm btn-outline-secondary time-btn" onclick="setTimeRange(7, this)">7d</button>
+      <button class="btn btn-sm btn-outline-secondary time-btn" onclick="setTimeRange(30, this)">30d</button>
+      <button class="btn btn-sm btn-outline-secondary time-btn" onclick="setTimeRange(365, this)">All</button>
     </div>
 
     <div class="section-divider"></div>
     <h5><i class="fas fa-filter"></i> Risk Filter</h5>
     <div style="display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="btn btn-sm btn-outline-danger risk-btn active" onclick="setRiskFilter('', this)">All</button>
-      <button class="btn btn-sm btn-outline-danger risk-btn" onclick="setRiskFilter('Critical', this)">Critical</button>
-      <button class="btn btn-sm btn-outline-warning risk-btn" onclick="setRiskFilter('High', this)">High</button>
-      <button class="btn btn-sm btn-outline-info risk-btn" onclick="setRiskFilter('Medium', this)">Medium</button>
+      <button class="btn btn-sm btn-outline-secondary risk-btn active" onclick="setRiskFilter('', this)">All</button>
+      <button class="btn btn-sm btn-danger risk-btn" onclick="setRiskFilter('Critical', this)">Critical</button>
+      <button class="btn btn-sm btn-outline-secondary risk-btn" style="color:var(--status-warning); border-color:var(--status-warning)" onclick="setRiskFilter('High', this)">High</button>
+      <button class="btn btn-sm btn-outline-secondary risk-btn" style="color:var(--accent-cyan); border-color:var(--accent-cyan)" onclick="setRiskFilter('Medium', this)">Medium</button>
     </div>
 
     <div class="section-divider"></div>
@@ -124,7 +136,6 @@
 {% block extra_scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Map Setup
   const map = L.map('map', {
     center: [20, 0],
     zoom: 2,
@@ -134,40 +145,35 @@
 
   L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '&copy; OpenStreetMap &copy; CartoDB',
+    attribution: '&copy; CartoDB',
   }).addTo(map);
 
-  // Layer Groups
   const originLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);
   const heatLayer = L.layerGroup();
   let heatPoints = [];
 
-  // State
   let currentTimeRange = 1;
   let currentRiskFilter = '';
 
-  // Prediction Colors (primary)
   const predColors = {
-    phishing: '#e74c3c',
-    legitimate: '#2ecc71',
-    suspicious: '#f39c12',
-    unknown: '#f39c12',
+    phishing: '#F43F5E',
+    legitimate: '#34D399',
+    suspicious: '#FBBF24',
+    unknown: '#FBBF24',
   };
 
-  // Risk Colors (fallback)
   const riskColors = {
-    Critical: '#e74c3c',
-    High: '#e67e22',
-    Medium: '#f1c40f',
-    Low: '#3498db',
-    Safe: '#2ecc71',
-    Unknown: '#95a5a6',
+    Critical: '#F43F5E',
+    High: '#F97316',
+    Medium: '#FBBF24',
+    Low: '#7C3AED',
+    Safe: '#34D399',
+    Unknown: '#71717A',
   };
 
-  // Custom Markers colored by prediction
   function createMarker(lat, lon, data) {
-    const color = predColors[data.prediction] || riskColors[data.risk_level] || '#95a5a6';
+    const color = predColors[data.prediction] || riskColors[data.risk_level] || '#71717A';
     const size = data.risk_score > 70 ? 14 : data.risk_score > 40 ? 10 : 7;
 
     const icon = L.divIcon({
@@ -178,13 +184,13 @@
     });
 
     var predLabel = data.prediction || 'unknown';
-    var predBadgeColor = predColors[predLabel] || '#95a5a6';
+    var predBadgeColor = predColors[predLabel] || '#71717A';
 
     var popup = '<div class="popup-title">' + (data.from || data.email_id || 'Unknown') + '</div>' +
       '<div class="popup-row"><strong>Subject:</strong> ' + (data.subject || 'N/A') + '</div>' +
       '<div class="popup-row"><strong>Prediction:</strong> <span style="color:' + predBadgeColor + ';font-weight:700;text-transform:uppercase">' + predLabel + '</span></div>' +
       '<div class="popup-row"><strong>Location:</strong> ' + (data.city || '?') + ', ' + (data.country || '?') + '</div>' +
-      '<div class="popup-row"><strong>Risk:</strong> <span class="risk-badge risk-' + data.risk_level + '">' + data.risk_level + ' (' + data.risk_score + '/100)</span></div>' +
+      '<div class="popup-row"><strong>Risk:</strong> <span class="badge-risk risk-' + (data.risk_level||'low').toLowerCase() + '">' + data.risk_level + ' (' + data.risk_score + '/100)</span></div>' +
       '<div class="popup-row"><strong>Auth:</strong> SPF ' + (data.auth && data.auth.spf ? data.auth.spf : '?') + ' / DKIM ' + (data.auth && data.auth.dkim ? data.auth.dkim : '?') + ' / DMARC ' + (data.auth && data.auth.dmarc ? data.auth.dmarc : '?') + '</div>' +
       '<div class="popup-row"><strong>Trust:</strong> ' + (data.trust_score || 0) + '/100</div>' +
       '<div class="popup-row"><strong>Time:</strong> ' + (data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A') + '</div>';
@@ -192,21 +198,19 @@
     return L.marker([lat, lon], { icon: icon }).bindPopup(popup, { maxWidth: 320 });
   }
 
-  // Route Polyline
   function createRouteLine(hops) {
     if (hops.length < 2) return null;
     var coords = hops.map(function(h) { return [h.lat, h.lon]; });
     var hasSuspicious = hops.some(function(h) { return h.suspicious; });
 
     return L.polyline(coords, {
-      color: hasSuspicious ? '#e74c3c' : '#3498db',
+      color: hasSuspicious ? '#F43F5E' : '#7C3AED',
       weight: hasSuspicious ? 3 : 2,
       opacity: 0.6,
       dashArray: hasSuspicious ? '8, 4' : null,
     });
   }
 
-  // Load Data
   async function loadMapData() {
     var pointsRes = await fetch('/api/threat-map/points?days=' + currentTimeRange + '&risk_level=' + currentRiskFilter);
     var statsRes = await fetch('/api/threat-map/stats?days=' + currentTimeRange);
@@ -216,12 +220,10 @@
     var statsData = await statsRes.json();
     var recentData = await recentRes.json();
 
-    // Clear layers
     originLayer.clearLayers();
     routeLayer.clearLayers();
     heatPoints = [];
 
-    // Add points
     for (var i = 0; i < pointsData.points.length; i++) {
       var p = pointsData.points[i];
       if (p.type === 'origin' && p.lat && p.lon) {
@@ -233,12 +235,10 @@
       }
     }
 
-    // Update stats
     document.getElementById('stat-total').textContent = statsData.total_scans || 0;
     document.getElementById('stat-geo').textContent = statsData.geo_tagged || 0;
     document.getElementById('stat-countries').textContent = statsData.countries || 0;
 
-    // Update country list
     var countryList = document.getElementById('country-list');
     var maxCount = (statsData.top_countries && statsData.top_countries[0]) ? statsData.top_countries[0].count : 1;
     countryList.innerHTML = (statsData.top_countries || []).slice(0, 10).map(function(c) {
@@ -248,21 +248,18 @@
         '<span class="bar-label">' + c.count + '</span></div>';
     }).join('');
 
-    // Update recent feed
     var feed = document.getElementById('live-feed');
     feed.innerHTML = (recentData.recent || []).map(function(r) {
-      var predColor = predColors[(r.ml_prediction || '').toLowerCase()] || '#95a5a6';
       return '<div class="feed-item ' + (r.risk_level || '').toLowerCase() + '">' +
         '<div class="feed-from">' + (r.from || 'Unknown') + '</div>' +
         '<div class="feed-subject">' + (r.subject || 'No subject') + '</div>' +
         '<div class="feed-meta">' +
-          (r.country || '?') + ' &middot; <span class="risk-badge risk-' + r.risk_level + '">' + r.risk_level + '</span>' +
+          (r.country || '?') + ' &middot; <span class="badge-risk risk-' + (r.risk_level||'low').toLowerCase() + '">' + r.risk_level + '</span>' +
           ' &middot; ' + (r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '') +
         '</div></div>';
     }).join('');
   }
 
-  // Layer Toggles
   function toggleLayer(layer) {
     if (layer === 'origin') {
       map.hasLayer(originLayer) ? map.removeLayer(originLayer) : map.addLayer(originLayer);
@@ -277,8 +274,8 @@
           var pt = heatPoints[i];
           L.circle([pt[0], pt[1]], {
             radius: 50000 + pt[2] * 100000,
-            color: '#e67e22',
-            fillColor: '#e67e22',
+            color: '#7C3AED',
+            fillColor: '#7C3AED',
             fillOpacity: 0.15 + pt[2] * 0.2,
             weight: 0,
           }).addTo(heatLayer);
@@ -288,7 +285,6 @@
     }
   }
 
-  // Time Range
   function setTimeRange(days, btn) {
     currentTimeRange = days;
     document.querySelectorAll('.time-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -296,7 +292,6 @@
     loadMapData();
   }
 
-  // Risk Filter
   function setRiskFilter(level, btn) {
     currentRiskFilter = level;
     document.querySelectorAll('.risk-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -304,7 +299,6 @@
     loadMapData();
   }
 
-  // Init
   loadMapData();
   setInterval(loadMapData, 30000);
 </script>

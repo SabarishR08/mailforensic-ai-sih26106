@@ -5,98 +5,113 @@
         .content { max-width: 1400px; }
 
         /* Stat cards */
-        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card {
-            background: #1a1d27; border-radius: 12px; padding: 20px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.06); border-top: 3px solid var(--primary);
-            transition: transform 0.2s;
+            background: var(--bg-card);
+            border-radius: 16px; padding: 20px; text-align: center;
+            border: 1px solid var(--border-default); border-top: 3px solid var(--accent-violet);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
-        .stat-card:hover { transform: translateY(-2px); }
-        .stat-card .number { font-size: 2.2rem; font-weight: 800; color: var(--primary); line-height: 1; }
-        .stat-card .label { color: #8892a4; font-size: 0.82rem; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-card.phishing .number { color: #c62828; }
-        .stat-card.phishing { border-top-color: #c62828; }
-        .stat-card.safe .number { color: #2e7d32; }
-        .stat-card.safe { border-top-color: #2e7d32; }
-        .stat-card.warn .number { color: #e65100; }
-        .stat-card.warn { border-top-color: #e65100; }
+        .stat-card:hover { transform: translateY(-3px); border-color: var(--border-hover); background: var(--bg-card-elevated); }
+        .stat-card .number { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -1px; }
+        .stat-card .label { color: var(--text-muted); font-size: 0.78rem; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
+        .stat-card.phishing .number { color: var(--status-danger); }
+        .stat-card.phishing { border-top-color: var(--status-danger); }
+        .stat-card.safe .number { color: var(--status-safe); }
+        .stat-card.safe { border-top-color: var(--status-safe); }
+        .stat-card.warn .number { color: var(--status-warning); }
+        .stat-card.warn { border-top-color: var(--status-warning); }
 
         /* Chart cards */
         .chart-card {
-            background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.06);
+            background: var(--bg-card);
+            border-radius: 16px; padding: 24px; margin-bottom: 20px;
+            border: 1px solid var(--border-default);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
         }
+        .chart-card:hover { border-color: var(--border-hover); background: var(--bg-card-elevated); }
         .chart-card h6 {
-            color: var(--primary); font-weight: 700; text-transform: uppercase;
-            font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 16px;
+            color: var(--text-primary); font-weight: 800; text-transform: uppercase;
+            font-size: 0.78rem; letter-spacing: 1px; margin-bottom: 18px;
             display: flex; align-items: center; gap: 8px;
         }
-        .chart-card h6 i { color: #00e5ff; }
+        .chart-card h6 i { color: var(--accent-cyan); font-size: 0.9rem; }
         .chart-wrapper { position: relative; width: 100%; }
         .chart-wrapper.tall { height: 350px; }
         .chart-wrapper.medium { height: 280px; }
 
         /* Activity feed */
         .activity-item {
-            display: flex; gap: 12px; padding: 10px 14px; margin-bottom: 6px;
-            background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.85rem;
-            border-left: 3px solid rgba(255,255,255,0.1); transition: background 0.2s;
+            display: flex; gap: 14px; padding: 12px 16px; margin-bottom: 8px;
+            background: var(--bg-panel); border-radius: 10px; font-size: 0.85rem;
+            border-left: 3px solid var(--border-default); transition: all 0.25s ease;
         }
-        .activity-item:hover { background: rgba(255,255,255,0.06); }
-        .activity-item.phishing { border-left-color: #c62828; }
-        .activity-item.legitimate { border-left-color: #2e7d32; }
+        .activity-item:hover { background: var(--bg-card-elevated); transform: translateX(3px); }
+        .activity-item.phishing { border-left-color: var(--status-danger); }
+        .activity-item.legitimate { border-left-color: var(--status-safe); }
         .activity-dot {
-            width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+            width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
         }
-        .activity-dot.phishing { background: #c62828; }
-        .activity-dot.legitimate { background: #2e7d32; }
-        .activity-dot.unknown { background: #f9a825; }
+        .activity-dot.phishing { background: var(--status-danger); color: var(--status-danger); }
+        .activity-dot.legitimate { background: var(--status-safe); color: var(--status-safe); }
+        .activity-dot.unknown { background: var(--status-warning); color: var(--status-warning); }
         .activity-info { flex: 1; }
-        .activity-subject { font-weight: 600; color: #e0e0e0; }
-        .activity-meta { color: #8892a4; font-size: 0.78rem; margin-top: 2px; }
-        .activity-badges { display: flex; gap: 6px; margin-top: 4px; }
+        .activity-subject { font-weight: 600; color: var(--text-primary); }
+        .activity-meta { color: var(--text-muted); font-size: 0.78rem; margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+        .activity-badges { display: flex; gap: 6px; margin-top: 6px; }
         .mini-badge {
-            padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+            padding: 3px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;
         }
-        .mini-badge.phishing { background: rgba(239,83,80,0.15); color: #ef5350; }
-        .mini-badge.legitimate { background: rgba(102,187,106,0.15); color: #66bb6a; }
-        .mini-badge.risk { background: rgba(255,152,0,0.15); color: #ffa726; }
-        .mini-badge.country { background: rgba(66,165,245,0.15); color: #42a5f5; }
+        .mini-badge.phishing { background: rgba(244,63,94,0.15); color: var(--status-danger); border: 1px solid rgba(244,63,94,0.3); }
+        .mini-badge.legitimate { background: rgba(52,211,153,0.15); color: var(--status-safe); border: 1px solid rgba(52,211,153,0.3); }
+        .mini-badge.risk { background: rgba(251,191,36,0.15); color: var(--status-warning); border: 1px solid rgba(251,191,36,0.3); }
+        .mini-badge.country { background: rgba(34,211,238,0.15); color: var(--accent-cyan); border: 1px solid rgba(34,211,238,0.3); }
 
-        /* Controls */
-        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        /* Controls Bar */
+        .controls {
+            display: flex; gap: 12px; align-items: center; margin-bottom: 24px;
+            background: var(--bg-card);
+            padding: 12px 20px; border-radius: 14px; border: 1px solid var(--border-default);
+        }
         .controls select, .controls input {
-            padding: 6px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-            font-size: 0.85rem; background: #12141c; color: #e0e0e0;
+            padding: 8px 14px; border: 1px solid var(--border-default); border-radius: 8px;
+            font-size: 0.85rem; background: var(--bg-input); color: var(--text-primary);
+            outline: none; transition: all 0.2s ease;
         }
-        .controls label { font-size: 0.85rem; color: #8892a4; }
-        .btn-refresh {
-            padding: 6px 16px; background: var(--primary); color: white; border: none;
-            border-radius: 6px; cursor: pointer; font-size: 0.85rem;
-        }
-        .btn-refresh:hover { background: var(--accent); }
+        .controls select:focus { border-color: var(--accent-violet); box-shadow: 0 0 10px rgba(124, 58, 237, 0.25); }
+        .controls label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
 
-        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
-        .empty-state i { font-size: 3rem; margin-bottom: 12px; color: #ccc; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state i { font-size: 3rem; margin-bottom: 12px; color: var(--text-muted); }
     </style>
 {% endblock %}
 
 {% block content %}
-    <h4 class="mb-4"><i class="fas fa-chart-area"></i> Threat Intelligence</h4>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="headline-slide-front">
+            <h3 class="fw-bold mb-1" style="color: var(--text-primary); letter-spacing: -0.5px;">
+                <i class="fas fa-chart-area text-cyan me-2"></i>Threat Intelligence
+            </h3>
+            <p class="text-muted mb-0" style="font-size: 0.88rem;">Aggregate email attack patterns, vector distribution, and threat velocity.</p>
+        </div>
+    </div>
 
     <div class="content">
         <!-- Controls -->
         <div class="controls">
-            <label>Time Range:</label>
+            <label><i class="fas fa-calendar-alt me-1 text-cyan"></i> Time Range:</label>
             <select id="range-select" onchange="loadAll()">
                 <option value="7">Last 7 days</option>
                 <option value="14">Last 14 days</option>
                 <option value="30" selected>Last 30 days</option>
                 <option value="90">Last 90 days</option>
             </select>
-            <button class="btn-refresh" onclick="loadAll()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <button class="btn btn-primary btn-sm" onclick="loadAll()"><i class="fas fa-sync-alt me-1"></i> Refresh Data</button>
             <div style="flex:1"></div>
-            <span id="last-updated" style="font-size:0.8rem; color:#999;"></span>
+            <span id="last-updated" style="font-size:0.8rem; color:var(--text-muted); font-family: 'JetBrains Mono', monospace;"></span>
         </div>
 
         <!-- Stat Cards -->
@@ -200,21 +215,24 @@
             <i class="fas fa-inbox"></i>
             <h5>No scan data yet</h5>
             <p>Scan some emails or upload .eml files to populate the threat intelligence dashboard.</p>
-            <a href="/email/scan" class="btn-refresh mt-2" style="text-decoration:none;">Go to Email Scanner</a>
+            <a href="/email/scan" class="btn btn-primary mt-2" style="text-decoration:none;">Go to Email Scanner</a>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
-    // --- Chart instances (so we can destroy before re-render) ---
     var charts = {};
     var COLORS = {
-        phishing: '#c62828', phishingBg: 'rgba(198,40,40,0.15)',
-        legitimate: '#2e7d32', legitimateBg: 'rgba(46,125,50,0.15)',
-        unknown: '#f9a825', unknownBg: 'rgba(249,168,37,0.15)',
-        spf: '#1565c0', dkim: '#6a1b9a', dmarc: '#e65100',
-        riskColors: { Critical: '#c62828', High: '#e65100', Medium: '#f9a825', Low: '#2e7d32', Safe: '#1565c0', Unknown: '#9e9e9e' },
+        phishing: '#F43F5E', phishingBg: 'rgba(244,63,94,0.15)',
+        legitimate: '#34D399', legitimateBg: 'rgba(52,211,153,0.15)',
+        unknown: '#FBBF24', unknownBg: 'rgba(251,191,36,0.15)',
+        spf: '#7C3AED', dkim: '#A855F7', dmarc: '#22D3EE',
+        riskColors: { Critical: '#F43F5E', High: '#F97316', Medium: '#FBBF24', Low: '#34D399', Safe: '#22D3EE', Unknown: '#71717A' },
     };
+
+    // Chart.js dark mode defaults
+    Chart.defaults.color = '#A1A1AA';
+    Chart.defaults.borderColor = '#222229';
 
     function loadAll() {
         var days = document.getElementById('range-select').value;
@@ -227,7 +245,6 @@
         document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
     }
 
-    // --- Summary ---
     function loadSummary() {
         fetch('/api/threat-intel/summary').then(function(r){return r.json()}).then(function(d) {
             if (d.total_scans === 0) {
@@ -243,12 +260,10 @@
         });
     }
 
-    // --- Trend Line Chart ---
     function loadTrends(days) {
         fetch('/api/threat-intel/trends?days=' + days).then(function(r){return r.json()}).then(function(d) {
             if (charts.trend) charts.trend.destroy();
             var ctx = document.getElementById('trend-chart').getContext('2d');
-            // Show only every Nth label to avoid crowding
             var skip = Math.max(1, Math.floor(d.labels.length / 15));
             var labels = d.labels.map(function(l,i) { return i % skip === 0 ? l.slice(5) : ''; });
             charts.trend = new Chart(ctx, {
@@ -270,7 +285,7 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: { legend: { position: 'top', labels: { color: '#F5F5F5' } } },
                     scales: {
                         x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
                         y: { beginAtZero: true, ticks: { stepSize: 1 } }
@@ -280,32 +295,29 @@
         });
     }
 
-    // --- Risk Distribution Doughnut ---
     function loadDistribution() {
         fetch('/api/threat-intel/distribution').then(function(r){return r.json()}).then(function(d) {
-            // Risk level pie
             if (charts.riskPie) charts.riskPie.destroy();
             var rl = d.risk_levels || {};
             var riskLabels = Object.keys(rl);
             var riskValues = Object.values(rl);
-            var riskBg = riskLabels.map(function(k) { return COLORS.riskColors[k] || '#9e9e9e'; });
+            var riskBg = riskLabels.map(function(k) { return COLORS.riskColors[k] || '#71717A'; });
             var ctx1 = document.getElementById('risk-pie-chart').getContext('2d');
             charts.riskPie = new Chart(ctx1, {
                 type: 'doughnut',
                 data: {
                     labels: riskLabels,
-                    datasets: [{ data: riskValues, backgroundColor: riskBg, borderWidth: 2, borderColor: '#fff' }]
+                    datasets: [{ data: riskValues, backgroundColor: riskBg, borderWidth: 2, borderColor: '#111116' }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { font: { size: 12 } } }
+                        legend: { position: 'right', labels: { color: '#F5F5F5', font: { size: 12 } } }
                     },
                     cutout: '55%'
                 }
             });
 
-            // ML prediction pie
             if (charts.mlPie) charts.mlPie.destroy();
             var ml = d.ml_predictions || {};
             var mlLabels = Object.keys(ml);
@@ -320,45 +332,38 @@
                 type: 'doughnut',
                 data: {
                     labels: mlLabels.map(function(l){ return l.charAt(0).toUpperCase() + l.slice(1); }),
-                    datasets: [{ data: mlValues, backgroundColor: mlBg, borderWidth: 2, borderColor: '#fff' }]
+                    datasets: [{ data: mlValues, backgroundColor: mlBg, borderWidth: 2, borderColor: '#111116' }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { font: { size: 12 } } } },
+                    plugins: { legend: { position: 'right', labels: { color: '#F5F5F5', font: { size: 12 } } } },
                     cutout: '55%'
                 }
             });
 
-            // Risk histogram
             if (charts.riskHist) charts.riskHist.destroy();
             var rh = d.risk_histogram || {};
             var ctx3 = document.getElementById('risk-hist-chart').getContext('2d');
-            var histBg = (rh.labels || []).map(function(_, i) {
-                var intensity = Math.round(50 + (i / 9) * 205);
-                return 'rgb(' + intensity + ', ' + Math.max(50, 200 - i * 20) + ', ' + Math.max(50, 200 - i * 25) + ')';
-            });
             charts.riskHist = new Chart(ctx3, {
                 type: 'bar',
                 data: {
                     labels: rh.labels || [],
-                    datasets: [{ label: 'Scans', data: rh.values || [], backgroundColor: histBg, borderRadius: 4 }]
+                    datasets: [{ label: 'Scans', data: rh.values || [], backgroundColor: '#7C3AED', borderRadius: 4 }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { display: false }, title: { display: true, text: 'Risk Score Range', font: { size: 11 } } },
-                        y: { beginAtZero: true, title: { display: true, text: 'Count', font: { size: 11 } } }
+                        x: { grid: { display: false }, title: { display: true, text: 'Risk Score Range', color: '#A1A1AA', font: { size: 11 } } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Count', color: '#A1A1AA', font: { size: 11 } } }
                     }
                 }
             });
         });
     }
 
-    // --- Top Sources ---
     function loadTopSources(days) {
         fetch('/api/threat-intel/top-sources').then(function(r){return r.json()}).then(function(d) {
-            // Volume bar chart
             if (charts.geo) charts.geo.destroy();
             var bv = d.by_volume || [];
             var ctx = document.getElementById('geo-chart').getContext('2d');
@@ -368,9 +373,7 @@
                     labels: bv.map(function(x){ return x.country; }),
                     datasets: [{
                         label: 'Scans', data: bv.map(function(x){ return x.count; }),
-                        backgroundColor: bv.map(function(_, i) {
-                            return 'rgba(26,35,126,' + (0.9 - i * 0.05) + ')';
-                        }),
+                        backgroundColor: '#22D3EE',
                         borderRadius: 4,
                     }]
                 },
@@ -379,13 +382,12 @@
                     indexAxis: 'y',
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { beginAtZero: true, title: { display: true, text: 'Number of Scans', font: { size: 11 } } },
+                        x: { beginAtZero: true, title: { display: true, text: 'Number of Scans', color: '#A1A1AA', font: { size: 11 } } },
                         y: { grid: { display: false } }
                     }
                 }
             });
 
-            // Phishing rate bar chart
             if (charts.phishingRate) charts.phishingRate.destroy();
             var pr = d.phishing_rate || [];
             var ctx2 = document.getElementById('phishing-rate-chart').getContext('2d');
@@ -406,17 +408,16 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: { legend: { position: 'top', labels: { color: '#F5F5F5' } } },
                     scales: {
                         x: { stacked: true, grid: { display: false } },
-                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Count', font: { size: 11 } } }
+                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Count', color: '#A1A1AA', font: { size: 11 } } }
                     }
                 }
             });
         });
     }
 
-    // --- Auth Failure Trends ---
     function loadAuthTrends(days) {
         fetch('/api/threat-intel/auth-trends?days=' + days).then(function(r){return r.json()}).then(function(d) {
             if (charts.auth) charts.auth.destroy();
@@ -430,40 +431,39 @@
                     datasets: [
                         {
                             label: 'SPF Failure %', data: d.spf_failure_rate,
-                            borderColor: COLORS.spf, backgroundColor: 'rgba(21,101,192,0.1)',
+                            borderColor: COLORS.spf, backgroundColor: 'rgba(124,58,237,0.1)',
                             fill: true, tension: 0.3, pointRadius: 1,
                         },
                         {
                             label: 'DKIM Failure %', data: d.dkim_failure_rate,
-                            borderColor: COLORS.dkim, backgroundColor: 'rgba(106,27,154,0.1)',
+                            borderColor: COLORS.dkim, backgroundColor: 'rgba(168,85,247,0.1)',
                             fill: true, tension: 0.3, pointRadius: 1,
                         },
                         {
                             label: 'DMARC Failure %', data: d.dmarc_failure_rate,
-                            borderColor: COLORS.dmarc, backgroundColor: 'rgba(230,81,0,0.1)',
+                            borderColor: COLORS.dmarc, backgroundColor: 'rgba(34,211,238,0.1)',
                             fill: true, tension: 0.3, pointRadius: 1,
                         }
                     ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: { legend: { position: 'top', labels: { color: '#F5F5F5' } } },
                     scales: {
                         x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Failure Rate %', font: { size: 11 } } }
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Failure Rate %', color: '#A1A1AA', font: { size: 11 } } }
                     }
                 }
             });
         });
     }
 
-    // --- Recent Activity Feed ---
     function loadRecent() {
         fetch('/api/threat-intel/recent?limit=25').then(function(r){return r.json()}).then(function(d) {
             var feed = document.getElementById('activity-feed');
             var scans = d.scans || [];
             if (scans.length === 0) {
-                feed.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">No recent scans</div>';
+                feed.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No recent scans</div>';
                 return;
             }
             var html = '';
@@ -489,14 +489,12 @@
         });
     }
 
-    // --- Helpers ---
     function escapeHtml(str) {
         var div = document.createElement('div');
         div.textContent = str || '';
         return div.innerHTML;
     }
 
-    // --- Init ---
     loadAll();
     </script>
 {% endblock %}
