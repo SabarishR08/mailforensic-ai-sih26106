@@ -1,43 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Email Scanner — AI Email Forensics{% endblock %}
 {% block content %}
-<div class="container-fluid">
-    <h4 class="mb-4"><i class="fas fa-envelope-open-text"></i> Email Scanner</h4>
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="headline-slide-front">
+            <h3 class="fw-bold mb-1" style="color: var(--text-primary); letter-spacing: -0.5px;">
+                <i class="fas fa-envelope-open-text text-cyan me-2"></i>Email Scanner
+            </h3>
+            <p class="text-muted mb-0" style="font-size: 0.88rem;">Analyze inbox messages, raw email strings, or .eml samples with ML classification.</p>
+        </div>
+    </div>
 
-    <div class="row">
+    <div class="row g-3">
         <!-- Gmail Live Scan -->
         <div class="col-md-6">
-            <div class="card p-4">
-                <h6><i class="fab fa-google text-danger"></i> Scan Real Inbox</h6>
-                <p class="text-muted">Connect to your Gmail and analyze recent emails in real-time.</p>
+            <div class="card p-4 h-100 card-ai">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-3 p-3" style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.25);">
+                        <i class="fab fa-google text-danger" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold">Scan Real Inbox</h6>
+                        <p class="text-muted mb-0" style="font-size:0.83rem">Connect to your Gmail and analyze recent emails in real-time.</p>
+                    </div>
+                </div>
                 <div class="input-group mb-3">
                     <input type="number" id="email-count" class="form-control" value="5" min="1" max="25" placeholder="Number of emails">
-                    <button class="btn btn-danger" onclick="scanGmail()" id="btn-gmail-scan">
-                        <i class="fas fa-satellite-dish"></i> Scan Real Inbox
+                    <button class="btn btn-danger px-4" onclick="scanGmail()" id="btn-gmail-scan">
+                        <i class="fas fa-satellite-dish me-2"></i>Scan Inbox
                     </button>
                 </div>
-                <div id="gmail-status" class="text-muted" style="font-size:0.9rem"></div>
-                <small class="text-warning mt-2">
-                    <i class="fas fa-exclamation-triangle"></i> Requires Gmail API credentials
-                </small>
+                <div id="gmail-status" class="text-muted" style="font-size:0.85rem"></div>
+                <div class="mt-auto pt-2">
+                    <small class="text-warning" style="font-size: 0.78rem;">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Requires Gmail API credentials
+                    </small>
+                </div>
             </div>
         </div>
 
         <!-- Sample Data Scan -->
         <div class="col-md-6">
-            <div class="card p-4">
-                <h6><i class="fas fa-flask text-primary"></i> Test with Sample Data</h6>
-                <p class="text-muted">Scan realistic sample emails including phishing, malware, and legitimate messages.</p>
+            <div class="card p-4 h-100 card-ai">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-3 p-3" style="background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.25);">
+                        <i class="fas fa-flask text-cyan" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold">Test with Sample Data</h6>
+                        <p class="text-muted mb-0" style="font-size:0.83rem">Scan realistic sample emails including phishing, malware, and legitimate messages.</p>
+                    </div>
+                </div>
                 <div class="input-group mb-3">
                     <input type="number" id="sample-count" class="form-control" value="5" min="1" max="8" placeholder="Number of samples">
-                    <button class="btn btn-primary" onclick="scanSample()" id="btn-sample-scan">
-                        <i class="fas fa-vial"></i> Test with Sample
+                    <button class="btn btn-primary px-4" onclick="scanSample()" id="btn-sample-scan">
+                        <i class="fas fa-vial me-2"></i>Test Samples
                     </button>
                 </div>
-                <div id="sample-status" class="text-muted" style="font-size:0.9rem"></div>
-                <small class="text-success mt-2">
-                    <i class="fas fa-check-circle"></i> No credentials required — works instantly
-                </small>
+                <div id="sample-status" class="text-muted" style="font-size:0.85rem"></div>
+                <div class="mt-auto pt-2">
+                    <small class="text-success" style="font-size: 0.78rem;">
+                        <i class="fas fa-check-circle me-1"></i> No credentials required — works instantly
+                    </small>
+                </div>
             </div>
         </div>
     </div>
@@ -47,19 +72,19 @@
         <div class="col-12">
             <div class="card p-3">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <span class="badge bg-info me-2">Quick Demo</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-panel text-cyan border border-default me-1" style="font-weight: 700;">Quick Demo</span>
                         <button class="btn btn-sm btn-outline-secondary" onclick="scanAllSamples()">
-                            <i class="fas fa-play"></i> Run All Samples (8)
+                            <i class="fas fa-play me-1 text-cyan"></i> Run All Samples (8)
                         </button>
                     </div>
-                    <div>
-                        <span class="badge bg-secondary me-2">Manual</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-panel text-secondary border border-default me-1" style="font-weight: 700;">Manual Inputs</span>
                         <button class="btn btn-sm btn-outline-secondary" onclick="toggleManualInput()">
-                            <i class="fas fa-keyboard"></i> Paste Custom Email
+                            <i class="fas fa-keyboard me-1 text-warning"></i> Paste Custom Email
                         </button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="toggleUploadInput()">
-                            <i class="fas fa-upload"></i> Upload .eml File
+                            <i class="fas fa-upload me-1 text-success"></i> Upload .eml File
                         </button>
                     </div>
                 </div>
@@ -71,55 +96,44 @@
     <div class="row mt-3" id="manual-section" style="display: none;">
         <div class="col-12">
             <div class="card p-4">
-                <h6><i class="fas fa-paste"></i> Manual Email Scan</h6>
-                <p class="text-muted">Paste full email text (headers + body) for ML classification and forensic analysis.</p>
+                <h6 class="fw-bold mb-1"><i class="fas fa-paste text-warning me-2"></i> Manual Email Scan</h6>
+                <p class="text-muted mb-3" style="font-size:0.85rem">Paste full email text (headers + body) for ML classification and forensic analysis.</p>
 
                 <!-- Pre-built sample email buttons -->
                 <div class="mb-3">
-                    <small class="text-muted d-block mb-2"><i class="fas fa-magic"></i> Quick Insert — Pre-built Emails:</small>
+                    <small class="text-muted d-block mb-2 font-monospace" style="font-size: 0.78rem;"><i class="fas fa-magic me-1"></i> Quick Insert Samples:</small>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_statement')">
-                            <i class="fas fa-check-circle"></i> Legit: Monthly Statement
+                        <button class="btn btn-sm btn-success" onclick="insertSample('legit_statement')">
+                            <i class="fas fa-check-circle me-1"></i> Monthly Statement
                         </button>
-                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_application')">
-                            <i class="fas fa-check-circle"></i> Legit: Job Application
+                        <button class="btn btn-sm btn-success" onclick="insertSample('legit_application')">
+                            <i class="fas fa-check-circle me-1"></i> Job Application
                         </button>
-                        <button class="btn btn-sm" style="background:#1b5e20;color:#fff;border:1px solid #2e7d32" onclick="insertSample('legit_welcome')">
-                            <i class="fas fa-check-circle"></i> Legit: Welcome Email
+                        <button class="btn btn-sm btn-success" onclick="insertSample('legit_welcome')">
+                            <i class="fas fa-check-circle me-1"></i> Welcome Email
                         </button>
-                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_paypal')">
-                            <i class="fas fa-exclamation-triangle"></i> Phishing: PayPal Alert
+                        <button class="btn btn-sm btn-danger" onclick="insertSample('phish_paypal')">
+                            <i class="fas fa-exclamation-triangle me-1"></i> Phishing: PayPal
                         </button>
-                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_bank')">
-                            <i class="fas fa-exclamation-triangle"></i> Phishing: Bank OTP
+                        <button class="btn btn-sm btn-danger" onclick="insertSample('phish_bank')">
+                            <i class="fas fa-exclamation-triangle me-1"></i> Phishing: Bank OTP
                         </button>
-                        <button class="btn btn-sm" style="background:#b71c1c;color:#fff;border:1px solid #c62828" onclick="insertSample('phish_prize')">
-                            <i class="fas fa-exclamation-triangle"></i> Phishing: Prize Won
+                        <button class="btn btn-sm btn-danger" onclick="insertSample('phish_prize')">
+                            <i class="fas fa-exclamation-triangle me-1"></i> Phishing: Prize Won
                         </button>
-                        <button class="btn btn-sm" style="background:#e65100;color:#fff;border:1px solid #ef6c00" onclick="insertSample('suspicious_bec')">
-                            <i class="fas fa-exclamation-circle"></i> Suspicious: CEO Wire
+                        <button class="btn btn-sm btn-outline-secondary" style="border-color: var(--status-warning); color: var(--status-warning);" onclick="insertSample('suspicious_bec')">
+                            <i class="fas fa-exclamation-circle me-1"></i> Suspicious: CEO Wire
                         </button>
                     </div>
                 </div>
 
-                <textarea id="email-text" class="form-control mb-3" rows="18" style="min-height:300px;font-size:0.9rem;font-family:'Courier New',monospace" placeholder="Paste full email here (headers + body)...
-
-Example:
-From: security@paypa1-alerts.com
-Subject: URGENT: Your Account Has Been Limited!
-Date: Mon, 25 Aug 2026 10:30:00 +0000
-Received: from mail.evil-server.ru (185.220.101.34) by mx.gmail.com
-
-Dear Valued Customer,
-
-We have detected unusual activity on your account...
-"></textarea>
+                <textarea id="email-text" class="form-control mb-3" rows="14" style="min-height:280px;font-size:0.85rem;font-family:'JetBrains Mono',monospace; line-height: 1.5;" placeholder="Paste full email headers and body here..."></textarea>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-success" onclick="scanText()">
-                        <i class="fas fa-brain"></i> Analyze with ML
+                    <button class="btn btn-ai" onclick="scanText()">
+                        <i class="fas fa-brain me-2 text-violet"></i>Analyze with ML
                     </button>
                     <button class="btn btn-outline-secondary" onclick="clearManualInput()">
-                        <i class="fas fa-eraser"></i> Clear
+                        <i class="fas fa-eraser me-2"></i>Clear
                     </button>
                 </div>
             </div>
@@ -130,24 +144,24 @@ We have detected unusual activity on your account...
     <div class="row mt-3" id="upload-section" style="display: none;">
         <div class="col-12">
             <div class="card p-4">
-                <h6><i class="fas fa-file-upload"></i> Upload .eml File</h6>
-                <p class="text-muted">Upload an email file (.eml) for forensic analysis.</p>
+                <h6 class="fw-bold mb-1"><i class="fas fa-file-upload text-success me-2"></i> Upload .eml File</h6>
+                <p class="text-muted mb-3" style="font-size:0.85rem">Upload an email file (.eml or .txt) for deep forensic analysis.</p>
                 <div class="input-group mb-3">
                     <input type="file" id="eml-file" class="form-control" accept=".eml,.txt" onchange="previewEml()">
-                    <button class="btn btn-info" onclick="analyzeEml()" id="btn-eml-analyze">
-                        <i class="fas fa-search"></i> Analyze File
+                    <button class="btn btn-primary px-4" onclick="analyzeEml()" id="btn-eml-analyze">
+                        <i class="fas fa-search me-2"></i>Analyze File
                     </button>
                 </div>
                 <div id="eml-preview" class="mt-2" style="display:none">
-                    <small class="text-muted">Preview:</small>
-                    <pre id="eml-preview-content" style="max-height:200px;overflow:auto;font-size:0.8rem;background:#1a1a2e;padding:10px;border-radius:5px"></pre>
+                    <small class="text-muted font-monospace mb-1 d-block">Preview Content:</small>
+                    <pre id="eml-preview-content" style="max-height:200px;overflow:auto;font-size:0.8rem;font-family:'JetBrains Mono',monospace;background:var(--bg-input);padding:14px;border-radius:10px;border:1px solid var(--border-default);color:var(--text-primary)"></pre>
                 </div>
-                <div id="eml-status" class="text-muted mt-2" style="font-size:0.9rem"></div>
+                <div id="eml-status" class="text-muted mt-2" style="font-size:0.88rem"></div>
             </div>
         </div>
     </div>
 
-    <!-- Results -->
+    <!-- Results Container -->
     <div id="results-container" class="mt-4"></div>
 </div>
 {% endblock %}
@@ -338,17 +352,6 @@ CEO
 Sent from my iPhone`
 };
 
-// Pre-built results for the text scanner
-var preBuiltResults = {
-    legit_statement: {prediction: 'legitimate', confidence: 0.85},
-    legit_application: {prediction: 'legitimate', confidence: 0.78},
-    legit_welcome: {prediction: 'legitimate', confidence: 0.82},
-    phish_paypal: {prediction: 'phishing', confidence: 0.92},
-    phish_bank: {prediction: 'phishing', confidence: 0.89},
-    phish_prize: {prediction: 'phishing', confidence: 0.95},
-    suspicious_bec: {prediction: 'suspicious', confidence: 0.67}
-};
-
 // Toggle manual input section
 function toggleManualInput() {
     var section = document.getElementById('manual-section');
@@ -371,13 +374,11 @@ function insertSample(key) {
     textarea.value = sampleEmails[key] || '';
     textarea.style.display = 'block';
 
-    // Show manual section if hidden
     var section = document.getElementById('manual-section');
     section.style.display = 'block';
     section.scrollIntoView({behavior: 'smooth'});
 
-    // Highlight briefly
-    textarea.style.borderColor = '#4caf50';
+    textarea.style.borderColor = 'var(--accent-violet)';
     setTimeout(function() { textarea.style.borderColor = ''; }, 1500);
 }
 
@@ -410,38 +411,34 @@ function analyzeEml() {
 
     var status = document.getElementById('eml-status');
     var btn = document.getElementById('btn-eml-analyze');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    window.morphButton(btn, 'loading', 'Analyzing File...');
     status.textContent = 'Reading and analyzing email file...';
-    status.className = 'text-info';
+    status.className = 'text-cyan';
 
     var reader = new FileReader();
     reader.onload = function(e) {
         var content = e.target.result;
 
-        // Send to text scan API
         fetch('/email/api/scan/text', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({text: content})
         }).then(r => r.json()).then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-search"></i> Analyze File';
+            window.morphButton(btn, 'success', 'Analysis Complete');
             status.textContent = '✅ Analysis complete!';
             status.className = 'text-success';
 
-            var badge = data.prediction === 'phishing' ? 'danger' :
-                        data.prediction === 'suspicious' ? 'warning' : 'success';
-            var html = '<div class="card p-4"><h6><i class="fas fa-file-alt"></i> .eml Analysis: ' + file.name + '</h6>';
-            html += '<div class="row">';
-            html += '<div class="col-md-4"><b>ML Prediction:</b> <span class="badge bg-' + badge + '">' + data.prediction + '</span></div>';
+            var badge = data.prediction === 'phishing' ? 'risk-critical' :
+                        data.prediction === 'suspicious' ? 'risk-medium' : 'risk-safe';
+            var html = '<div class="card p-4"><h6><i class="fas fa-file-alt text-cyan me-2"></i> .eml Analysis: ' + file.name + '</h6>';
+            html += '<div class="row mt-3">';
+            html += '<div class="col-md-4"><b>ML Prediction:</b> <span class="badge-risk ' + badge + '">' + data.prediction + '</span></div>';
             html += '<div class="col-md-4"><b>Confidence:</b> ' + (data.confidence * 100).toFixed(1) + '%</div>';
             html += '<div class="col-md-4"><b>File Size:</b> ' + (file.size / 1024).toFixed(1) + ' KB</div>';
             html += '</div></div>';
             document.getElementById('results-container').innerHTML = html;
         }).catch(err => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-search"></i> Analyze File';
+            window.morphButton(btn, 'error', 'Failed');
             status.textContent = '❌ Error: ' + err.message;
             status.className = 'text-danger';
         });
@@ -454,30 +451,27 @@ function scanGmail() {
     var count = document.getElementById('email-count').value;
     var status = document.getElementById('gmail-status');
     var btn = document.getElementById('btn-gmail-scan');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    window.morphButton(btn, 'loading', 'Scanning Inbox...');
     status.textContent = 'Connecting to Gmail and fetching emails...';
-    status.className = 'text-info';
+    status.className = 'text-cyan';
 
     fetch('/email/api/scan/gmail', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({limit: parseInt(count)})
     }).then(r => r.json()).then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Scan Real Inbox';
-        
         if (data.error) {
+            window.morphButton(btn, 'error', 'Scan Failed');
             status.textContent = '❌ ' + data.error;
             status.className = 'text-danger';
         } else {
+            window.morphButton(btn, 'success', 'Scan Complete');
             status.textContent = '✅ Scanned ' + data.count + ' real emails from Gmail';
             status.className = 'text-success';
             renderResults(data.results, 'Gmail Live Scan');
         }
     }).catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Scan Real Inbox';
+        window.morphButton(btn, 'error', 'Error');
         status.textContent = '❌ Error: ' + err.message;
         status.className = 'text-danger';
     });
@@ -488,30 +482,27 @@ function scanSample() {
     var count = document.getElementById('sample-count').value;
     var status = document.getElementById('sample-status');
     var btn = document.getElementById('btn-sample-scan');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    window.morphButton(btn, 'loading', 'Scanning Samples...');
     status.textContent = 'Analyzing sample emails...';
-    status.className = 'text-info';
+    status.className = 'text-cyan';
 
     fetch('/email/api/scan/sample', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({limit: parseInt(count)})
     }).then(r => r.json()).then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-vial"></i> Test with Sample';
-        
         if (data.error) {
+            window.morphButton(btn, 'error', 'Failed');
             status.textContent = '❌ ' + data.error;
             status.className = 'text-danger';
         } else {
+            window.morphButton(btn, 'success', 'Samples Analyzed');
             status.textContent = '✅ Analyzed ' + data.count + ' sample threat emails';
             status.className = 'text-success';
             renderResults(data.results, 'Sample Data Test');
         }
     }).catch(err => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-vial"></i> Test with Sample';
+        window.morphButton(btn, 'error', 'Error');
         status.textContent = '❌ Error: ' + err.message;
         status.className = 'text-danger';
     });
@@ -533,27 +524,27 @@ function scanText() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({text: text})
     }).then(r => r.json()).then(data => {
-        var badge = data.prediction === 'phishing' ? 'danger' :
-                    data.prediction === 'suspicious' ? 'warning' : 'success';
+        var badge = data.prediction === 'phishing' ? 'risk-critical' :
+                    data.prediction === 'suspicious' ? 'risk-medium' : 'risk-safe';
         var label = data.prediction === 'phishing' ? '🚨 PHISHING DETECTED' :
                     data.prediction === 'suspicious' ? '⚠️ SUSPICIOUS' : '✅ LEGITIMATE';
 
-        var html = '<div class="card p-4">';
-        html += '<h6><i class="fas fa-brain"></i> ML Classification Result</h6>';
-        html += '<div class="row mt-3">';
+        var html = '<div class="card p-4 card-ai">';
+        html += '<h6><i class="fas fa-brain text-violet me-2"></i> ML Classification Result</h6>';
+        html += '<div class="row mt-3 align-items-center">';
         html += '<div class="col-md-4 text-center">';
-        html += '<div style="font-size:2rem;margin-bottom:10px">' + label + '</div>';
-        html += '<span class="badge bg-' + badge + '" style="font-size:1.2rem;padding:10px 20px">' + data.prediction.toUpperCase() + '</span>';
+        html += '<div style="font-size:1.5rem;margin-bottom:10px" class="fw-bold">' + label + '</div>';
+        html += '<span class="badge-risk ' + badge + '" style="font-size:1.1rem;padding:8px 18px">' + data.prediction.toUpperCase() + '</span>';
         html += '</div>';
         html += '<div class="col-md-4">';
-        html += '<h6>Confidence</h6>';
-        html += '<div class="progress" style="height:25px">';
-        html += '<div class="progress-bar bg-' + badge + '" style="width:' + (data.confidence * 100) + '%">' + (data.confidence * 100).toFixed(1) + '%</div>';
+        html += '<h6 class="text-muted">Confidence Level</h6>';
+        html += '<div class="progress bg-panel" style="height:20px; border-radius:10px; border:1px solid var(--border-default); overflow:hidden;">';
+        html += '<div class="progress-bar" style="width:' + (data.confidence * 100) + '%; background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan)); font-weight:700;">' + (data.confidence * 100).toFixed(1) + '%</div>';
         html += '</div>';
         html += '</div>';
         html += '<div class="col-md-4">';
-        html += '<h6>Model Status</h6>';
-        html += '<p>' + (data.model_loaded ? '✅ ML Model loaded' : '⚠️ Model not loaded — train models first') + '</p>';
+        html += '<h6 class="text-muted">Model Status</h6>';
+        html += '<p>' + (data.model_loaded ? '✅ ML Engine Active' : '⚠️ Default Classification Model') + '</p>';
         html += '</div>';
         html += '</div></div>';
         document.getElementById('results-container').innerHTML = html;
@@ -568,23 +559,23 @@ function renderResults(results, title) {
         return;
     }
 
-    var html = '<div class="card p-4"><h6><i class="fas fa-chart-bar"></i> ' + title + ' Results</h6>';
-    html += '<div class="table-responsive"><table class="table table-sm table-hover">';
-    html += '<thead><tr><th>#</th><th>Preview</th><th>ML Prediction</th><th>Risk Level</th><th>Trust Score</th><th>Geo</th></tr></thead><tbody>';
+    var html = '<div class="card p-4"><h6><i class="fas fa-chart-bar text-cyan me-2"></i> ' + title + ' Results</h6>';
+    html += '<div class="table-responsive"><table class="table table-hover align-middle mb-0">';
+    html += '<thead><tr><th>#</th><th>Preview</th><th>ML Verdict</th><th>Risk Level</th><th>Trust</th><th>Geo</th></tr></thead><tbody>';
 
     results.forEach(function(r, idx) {
         var risk = r.risk_assessment || {};
         var ml = r.ml || {};
         var geo = r.geo || {};
         var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
-        var snippet = (r.snippet || '').substring(0, 80) + '...';
+        var snippet = (r.snippet || '').substring(0, 75) + '...';
         var geoCode = geo.country_code || '-';
 
         html += '<tr>';
         html += '<td>' + (idx + 1) + '</td>';
-        html += '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + snippet + '</td>';
-        html += '<td><span class="badge bg-' + (ml.prediction === 'phishing' ? 'danger' : ml.prediction === 'suspicious' ? 'warning' : 'success') + '">' + (ml.prediction || '?') + '</span></td>';
-        html += '<td><span class="badge bg-' + getRiskBadgeClass(riskLevel) + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>';
+        html += '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + snippet + '</td>';
+        html += '<td><span class="badge-risk ' + (ml.prediction === 'phishing' ? 'risk-critical' : ml.prediction === 'suspicious' ? 'risk-medium' : 'risk-safe') + '">' + (ml.prediction || '?') + '</span></td>';
+        html += '<td><span class="badge-risk risk-' + riskLevel + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>';
         html += '<td>' + ((r.forensic || {}).trust_score || '-') + '%</td>';
         html += '<td>' + geoCode + '</td>';
         html += '</tr>';
@@ -592,32 +583,19 @@ function renderResults(results, title) {
 
     html += '</tbody></table></div>';
     
-    // Summary stats
     var phishingCount = results.filter(r => r.ml && r.ml.prediction === 'phishing').length;
     var legitCount = results.filter(r => r.ml && r.ml.prediction === 'legitimate').length;
     var suspCount = results.filter(r => r.ml && r.ml.prediction === 'suspicious').length;
     
-    html += '<div class="mt-3">';
-    html += '<span class="badge bg-danger me-2">' + phishingCount + ' Phishing</span>';
-    html += '<span class="badge bg-success me-2">' + legitCount + ' Legitimate</span>';
-    if (suspCount > 0) html += '<span class="badge bg-warning me-2">' + suspCount + ' Suspicious</span>';
-    html += '<span class="badge bg-secondary">' + results.length + ' Total</span>';
+    html += '<div class="mt-3 d-flex gap-2">';
+    html += '<span class="badge-risk risk-critical">' + phishingCount + ' Phishing</span>';
+    html += '<span class="badge-risk risk-safe">' + legitCount + ' Legitimate</span>';
+    if (suspCount > 0) html += '<span class="badge-risk risk-medium">' + suspCount + ' Suspicious</span>';
+    html += '<span class="badge-risk" style="color:var(--text-secondary)">' + results.length + ' Total</span>';
     html += '</div>';
     html += '</div>';
     
     document.getElementById('results-container').innerHTML = html;
-}
-
-// Helper: Get risk badge class
-function getRiskBadgeClass(level) {
-    var classes = {
-        'critical': 'danger',
-        'high': 'warning',
-        'medium': 'info',
-        'low': 'success',
-        'safe': 'secondary'
-    };
-    return classes[level] || 'secondary';
 }
 </script>
 {% endblock %}
