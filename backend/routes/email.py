@@ -13,6 +13,7 @@ from backend.services.email_scanner import scan_emails, scan_emails_streaming
 from backend.services.ml_predictor import get_ml_predictor
 from backend.extensions import socketio
 from backend.models import db, EmailScanResult
+from backend.spa import spa_enabled, spa_index
 
 logger = logging.getLogger(__name__)
 email_bp = Blueprint('email', __name__)
@@ -55,11 +56,15 @@ def log_analysis(result, source='unknown'):
 
 @email_bp.route('/scan')
 def email_scan_page():
+    if spa_enabled():
+        return spa_index()
     return render_template('email_scanner.html')
 
 
 @email_bp.route('/demo')
 def demo_page():
+    if spa_enabled():
+        return spa_index()
     return render_template('demo.html')
 
 
