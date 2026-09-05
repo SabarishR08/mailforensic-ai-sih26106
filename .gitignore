@@ -23,6 +23,10 @@ instance/
 backend/credentials/
 token.pickle
 *.json
+# ...but the React frontend's build manifests must be tracked (Render runs npm ci)
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
 
 # Test artifacts
 test_*.py
@@ -45,3 +49,7 @@ reports/
 # OS
 .DS_Store
 Thumbs.db
+
+# React frontend
+frontend/node_modules/
+frontend/dist/

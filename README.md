@@ -77,6 +77,21 @@ python backend/routes/dashboard.py
 docker compose up --build
 ```
 
+### 🖥️ React Frontend (optional SPA)
+
+The dashboard UI also ships as a **React + Vite + TypeScript** SPA in [`frontend/`](frontend/). It talks to the exact same Flask APIs and Socket.IO events, so the backend is unchanged.
+
+```bash
+cd frontend
+npm install
+npm run dev        # dev server on :5173, proxies /api + Socket.IO to Flask on :5000
+npm run build      # production build → frontend/dist
+```
+
+Flask automatically serves the built SPA (instead of the Jinja templates) whenever `frontend/dist/index.html` exists. Control it explicitly with the `FRONTEND_SPA` env var (`1` = SPA, `0` = legacy Jinja). API/PDF/Socket.IO routes behave identically in both modes. On Render, add a build step (`npm ci && npm run build` in `frontend/`) before starting the web service.
+
+> The old Jinja2 templates in `dashboard/templates/` remain in the repo and stay fully functional (set `FRONTEND_SPA=0`) — safe to remove once the SPA is battle-tested.
+
 ## ☁️ Deployment
 
 Defined in `render.yaml` (web service `ai-email-forensics`) with `autoDeploy` enabled — pushes to the default branch trigger a Render deploy.

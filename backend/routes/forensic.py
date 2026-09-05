@@ -14,6 +14,7 @@ from backend.services.forensic_report import ForensicReportGenerator
 from backend.services.threat_intelligence import unified_url_check
 from backend.utils.url_utils import extract_urls
 from backend.models import EmailScanResult, db
+from backend.spa import spa_enabled, spa_index
 
 forensic_bp = Blueprint('forensic', __name__)
 
@@ -25,11 +26,15 @@ forensic_bp = Blueprint('forensic', __name__)
 @forensic_bp.route('/scan')
 def forensic_scan_page():
     """Render the .eml upload page"""
+    if spa_enabled():
+        return spa_index()
     return render_template('forensic_eml.html')
 
 
 @forensic_bp.route('/report/<int:scan_id>')
 def forensic_drilldown(scan_id):
+    if spa_enabled():
+        return spa_index()
     scan = EmailScanResult.query.get_or_404(scan_id)
     full_result = json.loads(scan.full_result) if scan.full_result else {}
     return render_template('forensic_report.html', scan=scan, result=full_result)
@@ -204,3 +209,11 @@ def generate_pdf(scan_id):
 
     filepath = ForensicReportGenerator.generate_report(full_result)
     return send_file(filepath, as_attachment=True, download_name='forensic_report.pdf')
+
+
+@forensic_bp.route('/api/report/<int:scan_id>')
+def api_report_json(scan_id):
+    """Return a persisted scan's report as JSON (used by the React SPA)."""
+    scan = EmailScanResult.query.get_or_404(scan_id)
+    full_result = json.loads(scan.full_result) if scan.full_result else {}
+    return jsonify({'scan': scan.to_dict(), 'result': full_result})
