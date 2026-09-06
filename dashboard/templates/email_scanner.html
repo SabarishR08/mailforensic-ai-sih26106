@@ -474,6 +474,14 @@ function scanGmail() {
                     help.style.cssText = 'font-size:0.8rem; border:1px solid rgba(244,63,94,0.3); background: var(--bg-input);';
                     help.innerHTML = '<i class="fas fa-cog me-1"></i> To enable live inbox scans, the admin must set <code>GMAIL_CREDENTIALS_JSON</code> and <code>GMAIL_REFRESH_TOKEN</code> env vars (or place <code>credentials/credentials.json</code>) and restart. For a no-setup demo, use <b>Test with Sample Data</b> below — it needs no credentials.';
                 }
+            } else if (data.code === 'gmail_auth_failed') {
+                status.innerHTML = '🔐 <b>Gmail token rejected — expired or revoked.</b>';
+                status.className = 'text-danger';
+                if (help) {
+                    help.className = 'mt-2 p-3 rounded-3 text-danger';
+                    help.style.cssText = 'font-size:0.8rem; border:1px solid rgba(244,63,94,0.3); background: var(--bg-input);';
+                    help.innerHTML = '<i class="fas fa-key me-1"></i> The server\'s Gmail refresh token is no longer valid (Google revokes tokens when the OAuth consent screen is in Testing mode after 7 days). The admin must run <code>backend/auth_gmail.py</code>, complete the browser sign-in, and update <code>GMAIL_REFRESH_TOKEN</code> on the server. <b>Test with Sample Data</b> below works meanwhile.';
+                }
             } else if (data.code === 'gmail_empty') {
                 status.innerHTML = '⚠️ Gmail connected, but returned 0 messages.';
                 status.className = 'text-warning';
