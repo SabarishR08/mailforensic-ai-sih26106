@@ -4,7 +4,7 @@ import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
-from sqlalchemy import func, cast, Date
+from sqlalchemy import func
 from backend.models import ThreatLog, EmailScanResult, db
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def threat_intel_trends():
     cutoff = datetime.utcnow() - timedelta(days=days)
 
     rows = db.session.query(
-        cast(EmailScanResult.timestamp, Date).label('day'),
+        func.date(EmailScanResult.timestamp).label('day'),
         EmailScanResult.ml_prediction,
         func.count(EmailScanResult.id)
     ).filter(
@@ -104,7 +104,7 @@ def threat_intel_trends():
     # Build a dict: { 'YYYY-MM-DD': { 'phishing': N, 'legitimate': N } }
     trends = defaultdict(lambda: {'phishing': 0, 'legitimate': 0, 'unknown': 0})
     for day, prediction, count in rows:
-        day_str = day.isoformat() if day else 'unknown'
+        day_str = day.isoformat() if hasattr(day, 'isoformat') else str(day or 'unknown')
         pred = prediction or 'unknown'
         if pred in ('phishing', 'legitimate', 'unknown'):
             trends[day_str][pred] = count

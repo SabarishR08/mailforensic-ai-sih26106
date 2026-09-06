@@ -19,6 +19,10 @@ from googleapiclient.discovery import build
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 MAX_EMAIL_SIZE = 50000
 
+
+class GmailAuthError(Exception):
+    """Raised when Gmail credentials exist but are invalid/expired/revoked."""
+
 BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_PATH = BASE_DIR / "credentials" / "credentials.json"
 TOKEN_PATH = BASE_DIR / "credentials" / "token.pickle"
@@ -59,37 +63,52 @@ def authenticate_gmail():
             
         except Exception as e:
             logger.error(f"Env var auth failed: {e}")
-            # Fall through to local methods
+            # Credentials are configured but unusable — surface this instead of
+            # silently falling through (a dead refresh token must not read as
+            # "not configured" or "0 messages").
+            raise GmailAuthError(
+                f"Gmail refresh token was rejected by Google ({type(e).__name__}: {str(e)[:150]}). "
+                "Regenerate it by running backend/auth_gmail.py locally and updating "
+                "the GMAIL_REFRESH_TOKEN environment variable."
+            )
     
     # Method 2: Local pickle file (for development)
     if TOKEN_PATH.exists():
         try:
             with open(TOKEN_PATH, 'rb') as token:
-                creds = pickle.load(token)
-        except Exception:
-            creds = None
-    
-    # Method 3: Interactive OAuth flow (first time local setup)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception:
+                loaded = pickle.load(token)
+            # Only accept a real Credentials object with a usable token.
+            # A corrupt/empty pickle (e.g. a bare None) must not silently
+            # fall through to an interactive OAuth flow from a request thread.
+            if isinstance(loaded, Credentials) and (loaded.token or loaded.refresh_token):
+                creds = loaded
+            else:
+                logger.warning('token.pickle exists but contains no valid credentials (%s); ignoring it', type(loaded).__name__)
                 creds = None
-        else:
-            if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    "Gmail credentials not found. Set GMAIL_CREDENTIALS_JSON and "
-                    "GMAIL_REFRESH_TOKEN environment variables, or place credentials.json "
-                    f"at {CREDENTIALS_PATH}"
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_PATH), SCOPES)
-            creds = flow.run_local_server(port=0)
-        
-        # Save token for local development
-        TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(TOKEN_PATH, 'wb') as token:
-            pickle.dump(creds, token)
+        except Exception as e:
+            logger.warning('Failed to load token.pickle (%s); ignoring it', e)
+            creds = None
+
+    # Refresh an expired token if possible
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+        except Exception as e:
+            logger.error(f'Token refresh failed: {e}')
+            creds = None
+
+    if not creds or not creds.valid:
+        raise FileNotFoundError(
+            "Gmail credentials not found. Set GMAIL_CREDENTIALS_JSON and "
+            "GMAIL_REFRESH_TOKEN environment variables, or place credentials.json and "
+            f"a valid token.pickle at {TOKEN_PATH} (run auth_gmail.py once to generate it). "
+            "Interactive OAuth cannot run inside the web server; use auth_gmail.py in a terminal."
+        )
+
+    # Save refreshed token for local development
+    TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(TOKEN_PATH, 'wb') as token:
+        pickle.dump(creds, token)
 
     return build('gmail', 'v1', credentials=creds)
 
@@ -137,11 +156,7 @@ def _extract_email_headers(payload: dict) -> dict:
 
 def fetch_recent_emails(limit=5, include_headers=True):
     """Fetch recent emails with full headers for forensic analysis"""
-    try:
-        service = authenticate_gmail()
-    except Exception as e:
-        logger.error(f"Gmail auth failed: {e}")
-        return []
+    service = authenticate_gmail()
 
     try:
         results = service.users().messages().list(userId='me', maxResults=limit, fields='messages(id)').execute()
@@ -177,4 +192,6 @@ def fetch_recent_emails(limit=5, include_headers=True):
         return emails
     except Exception as e:
         logger.error(f"Error fetching emails: {e}")
-        return []
+        # An API failure is NOT "0 messages" — surface it so the route can
+        # report gmail_error instead of a misleading gmail_empty.
+        raise RuntimeError(f"Gmail API error while fetching messages: {str(e)[:200]}") from e

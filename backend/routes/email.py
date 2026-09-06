@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from flask import Blueprint, render_template, request, jsonify
 from flask_socketio import join_room
-from backend.services.gmail_service import fetch_recent_emails
+from backend.services.gmail_service import fetch_recent_emails, GmailAuthError
 from backend.services.sample_emails import get_sample_emails
 from backend.services.email_scanner import scan_emails, scan_emails_streaming
 from backend.services.ml_predictor import get_ml_predictor
@@ -76,6 +76,9 @@ def scan_gmail():
     except FileNotFoundError:
         logger.warning('Gmail API is not configured on this server')
         return jsonify({'code': 'gmail_not_configured', 'error': 'Gmail API is not configured on this server. Add GMAIL_CREDENTIALS_JSON and GMAIL_REFRESH_TOKEN environment variables (or a local credentials.json), then restart.', 'results': []}), 200
+    except GmailAuthError as e:
+        logger.error('Gmail auth rejected: %s', e)
+        return jsonify({'code': 'gmail_auth_failed', 'error': str(e)[:300], 'results': []}), 200
     except Exception as e:
         logger.error(f'Gmail fetch failed: {e}')
         return jsonify({'code': 'gmail_error', 'error': f'Gmail connection failed: {str(e)[:200]}', 'results': []}), 200
