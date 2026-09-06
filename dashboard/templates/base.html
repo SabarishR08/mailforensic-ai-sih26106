@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -810,7 +810,12 @@
         /* OBSIDIAN TABLES                                           */
         /* ========================================================= */
         .table {
-            color: var(--text-primary);
+            --bs-table-color: var(--text-primary);
+            --bs-table-bg: transparent;
+            --bs-table-hover-color: var(--text-primary);
+            --bs-table-hover-bg: var(--bg-card);
+            --bs-table-border-color: var(--border-default);
+            color: var(--text-primary) !important;
             vertical-align: middle;
             background: var(--bg-secondary);
             border-collapse: separate;
@@ -819,10 +824,16 @@
             overflow: hidden;
             border: 1px solid var(--border-default);
         }
+        .table > :not(caption) > * > * {
+            color: var(--text-primary) !important;
+            background-color: transparent !important;
+            border-bottom-color: rgba(255, 255, 255, 0.05);
+            box-shadow: none !important;
+        }
         .table thead th {
-            background: var(--bg-panel);
-            border-bottom: 1px solid var(--border-default);
-            color: var(--text-muted);
+            background: var(--bg-panel) !important;
+            border-bottom: 1px solid var(--border-default) !important;
+            color: var(--text-secondary) !important;
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -830,14 +841,16 @@
             padding: 14px 18px;
         }
         .table tbody td {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
             padding: 14px 18px;
             font-size: 0.88rem;
-            background: var(--bg-secondary);
+            color: var(--text-primary) !important;
+            background: var(--bg-secondary) !important;
         }
         .table-hover tbody tr { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         .table-hover tbody tr:hover td {
             background: var(--bg-card) !important;
+            color: #FFFFFF !important;
         }
         .table-hover tbody tr:hover {
             transform: translateX(2px);
