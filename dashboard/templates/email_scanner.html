@@ -601,16 +601,18 @@ function renderResults(results, title) {
         var ml = r.ml || {};
         var geo = r.geo || {};
         var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
-        var snippet = (r.snippet || '').substring(0, 75) + '...';
-        var geoCode = geo.country_code || '-';
+        var rawText = (r.snippet || r.body || '').trim();
+        var snippet = rawText.length > 80 ? rawText.substring(0, 80) + '...' : (rawText || 'No text preview');
+        var geoCode = geo.country_code || 'N/A';
+        var trustScore = (r.forensic || {}).trust_score !== undefined ? (r.forensic.trust_score + '%') : '-';
 
         html += '<tr>';
-        html += '<td>' + (idx + 1) + '</td>';
-        html += '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + snippet + '</td>';
+        html += '<td style="color: var(--text-muted); font-weight: 600; width: 40px;">' + (idx + 1) + '</td>';
+        html += '<td style="max-width:320px; color: var(--text-primary); font-size: 0.88rem; font-weight: 500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + (rawText.replace(/"/g, '&quot;')) + '">' + snippet + '</td>';
         html += '<td><span class="badge-risk ' + (ml.prediction === 'phishing' ? 'risk-critical' : ml.prediction === 'suspicious' ? 'risk-medium' : 'risk-safe') + '">' + (ml.prediction || '?') + '</span></td>';
         html += '<td><span class="badge-risk risk-' + riskLevel + '">' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')</span></td>';
-        html += '<td>' + ((r.forensic || {}).trust_score || '-') + '%</td>';
-        html += '<td>' + geoCode + '</td>';
+        html += '<td style="color: var(--accent-cyan); font-weight: 600; font-size: 0.88rem;">' + trustScore + '</td>';
+        html += '<td><span class="badge" style="background: rgba(255,255,255,0.08); color: var(--text-primary); border: 1px solid var(--border-default); font-weight: 600; letter-spacing: 0.5px;">' + geoCode + '</span></td>';
         html += '</tr>';
     });
 
