@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Models — only exclude DistilBERT (268MB) and images
+# .pkl files under ml/models/ are small (~5MB total) and tracked for deployment
+backend/ml/models/distilbert_email_threat/
+backend/ml/models/*.png
+
+# Data (too large for git)
+data/
+Kaggle_datasets/
+*.zip
+
+# Database
+*.db
+instance/
+
+# Credentials
+backend/credentials/
+token.pickle
+*.json
+# ...but the React frontend's build manifests must be tracked (Render runs npm ci)
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
+
+# Test artifacts
+test_*.py
+test_*.json
+
+# Analysis logs
+backend/logs/
+
+# Uploads & Reports
+uploads/
+reports/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# React frontend
+frontend/node_modules/
+frontend/dist/

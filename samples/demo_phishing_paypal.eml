@@ -1,0 +1,79 @@
+From: security@paypa1-secure-alerts.com
+To: sabarish.sec.lab@gmail.com
+Subject: [URGENT] Unusual Sign-In Activity Detected on Your PayPal Account
+Date: Mon, 25 Aug 2026 08:14:32 -0700
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+X-Mailer: PHPMailer 6.1.4 (https://github.com/PHPMailer/PHPMailer)
+X-Originating-IP: 185.220.101.34
+Return-Path: <bounce@mail.evil-relay.cn>
+Message-ID: <0a8f3e12-7c4b-9d5e-f1a2-3b8e7d6c5421@paypa1-secure-alerts.com>
+Received: from mail.evil-relay.cn (unknown [185.220.101.34])
+	by mx.google.com with ESMTPS id a1b2c3d4e5f6g7h8i9
+	for <sabarish.sec.lab@gmail.com>
+	(version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384);
+	Mon, 25 Aug 2026 08:14:34 -0700 (PDT)
+Received-SPF: fail (google.com: domain of bounce@mail.evil-relay.cn does not designate 185.220.101.34 as permitted sender)
+Authentication-Results: mx.google.com;
+       dkim=none;
+       spf=fail (google.com: domain of bounce@mail.evil-relay.cn does not designate 185.220.101.34 as permitted sender) smtp.mailfrom=bounce@mail.evil-relay.cn;
+       dmarc=fail (p=REJECT) header.from=paypa1-secure-alerts.com
+DKIM-Signature: v=1; a=rsa-sha256; d=evil-relay.cn; s=selector1; c=relaxed/relaxed;
+	bh=FakeBase64HashContent=;
+	h=from:to:subject:date:message-id;
+	b=FakeSignatureData=
+Received: from localhost (localhost [127.0.0.1])
+	by mail.evil-relay.cn (Postfix) with ESMTP id 7X9Y2Z;
+	Mon, 25 Aug 2026 17:14:31 +0200 (CEST)
+X-Originating-Sender: security@paypa1-secure-alerts.com
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=google.com; s=20230601;
+	h=to:from:subject:date:message-id:mime-version:content-transfer-encoding;
+	bh=FakeBase64=;
+	b=1234567890abcdefghijklmnopqrstuvwxyz=
+
+Dear Valued PayPal Customer,
+
+We have detected unusual sign-in activity on your PayPal account. A sign-in attempt was made from a device and location we don't recognize.
+
+ACTIVITY DETAILS:
+- Date/Time: August 25, 2026 at 3:42 AM UTC
+- Location: Moscow, Russia (185.220.101.34)
+- Device: Windows 10 / Chrome 120
+- Browser: Mozilla/5.0 (Windows NT 10.0)
+
+If this was you, you can safely ignore this email. No further action is needed.
+
+If you did NOT authorize this sign-in, your account may be at risk. We have temporarily limited your account to protect your funds and personal information.
+
+To restore full access to your account, please verify your identity by clicking the secure link below within 24 hours:
+
+http://185.220.101.34/paypal-security/verify?session_id=a8f3e12c7b4d&token=9e5f2d1a
+
+You will be asked to confirm:
+1. Your full legal name
+2. Your email address
+3. Your credit card number (last 4 digits + full number for verification)
+4. Your PayPal password
+5. Social Security Number (for identity confirmation)
+
+This verification process is mandatory under PayPal's updated Security Protocol 2026 (Section 4.2.1). Failure to verify within 24 hours will result in permanent account suspension and forfeiture of any remaining balance.
+
+For your security, do not share this email with anyone. Do not call PayPal support — this is an automated security notification.
+
+If you need to contact us, please use the official PayPal Help Center at https://www.paypal.com/help (do NOT use the link above).
+
+Thank you for your prompt attention to this matter.
+
+PayPal Security Team
+PayPal, Inc.
+2211 North First Street
+San Jose, CA 95131
+
+---
+This is an automated security notification. Please do not reply to this email.
+Transaction Reference: TXN-2026-0825-38472910
+Case ID: SEC-URG-928471
+
+If you believe you received this email in error, please report it to security@paypal.com
