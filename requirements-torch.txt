@@ -1,0 +1,5 @@
+# Optional: DistilBERT model support (not needed for XGB+LGB deployment)
+# Only install if you want the full 3-model ensemble (99% acc)
+# Adds ~2GB of disk/RAM overhead
+torch>=2.0.0
+transformers>=4.30.0

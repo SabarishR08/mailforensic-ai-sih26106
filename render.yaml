@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: ai-email-forensics
+    env: python
+    # Python deps + React SPA build. If npm is unavailable in Render's Python
+    # image the build still succeeds and the legacy Jinja UI is served (the
+    # app auto-detects frontend/dist). Real npm/build errors fail the deploy
+    # loudly — Render keeps the last good deploy live in that case.
+    buildCommand: pip install -r requirements.txt && cd frontend && if command -v npm > /dev/null 2>&1; then npm ci && npm run build; else echo "npm not found in Python image - serving legacy Jinja UI"; fi
+    startCommand: gunicorn --bind 0.0.0.0:$PORT backend.app:create_app()
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: DEBUG_MODE
+        value: false
+      - key: GMAIL_CREDENTIALS_JSON
+        sync: false  # Set manually in Render dashboard
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false  # Set manually in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VIRUSTOTAL_API_KEY
+        sync: false
+      - key: SAFE_BROWSING_API_KEY
+        sync: false
+      - key: ABUSEIPDB_API_KEY
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true

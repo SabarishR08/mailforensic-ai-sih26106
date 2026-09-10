@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Live Demo ΓÇö AI Email Forensics{% endblock %}
+{% block extra_head %}
+    <style>
+        .demo-body { display: grid; grid-template-columns: 1fr 400px; gap: 20px; height: calc(100vh - 120px); }
+
+        .scan-area { display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+        .progress-section { flex-shrink: 0; }
+        .progress-bar-wrapper { height: 8px; background: var(--bg-panel); border-radius: 4px; overflow: hidden; margin-top: 8px; border: 1px solid var(--border-default); }
+        .progress-bar-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+            border-radius: 4px; transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+        }
+        .progress-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; overflow-y: auto; padding-right: 6px; flex: 1; }
+        .cards-grid::-webkit-scrollbar { width: 4px; }
+        .cards-grid::-webkit-scrollbar-thumb { background: var(--accent-violet); border-radius: 2px; }
+
+        .scan-card {
+            background: var(--bg-card);
+            border-radius: 16px; padding: 18px; border: 1px solid var(--border-default);
+            animation: cardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .scan-card:hover { border-color: var(--border-hover); transform: translateY(-2px); background: var(--bg-card-elevated); }
+        .scan-card.phishing { border-left: 4px solid var(--status-danger); }
+        .scan-card.legitimate { border-left: 4px solid var(--status-safe); }
+        .scan-card.unknown { border-left: 4px solid var(--status-warning); }
+        .scan-card.scanning { border-left: 4px solid var(--accent-cyan); opacity: 0.85; animation: scanPulse 1.5s infinite; }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card-email-id { font-size: 0.78rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .card-prediction { font-size: 0.75rem; padding: 3px 10px; border-radius: 12px; font-weight: 700; }
+        .card-prediction.phishing { background: rgba(244,63,94,0.15); color: var(--status-danger); border: 1px solid rgba(244,63,94,0.3); }
+        .card-prediction.legitimate { background: rgba(52,211,153,0.15); color: var(--status-safe); border: 1px solid rgba(52,211,153,0.3); }
+        .card-prediction.unknown { background: rgba(251,191,36,0.15); color: var(--status-warning); border: 1px solid rgba(251,191,36,0.3); }
+        .card-snippet { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .card-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .metric { text-align: center; padding: 8px; background: var(--bg-panel); border-radius: 8px; border: 1px solid var(--border-default); }
+        .metric-value { font-size: 1.05rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .metric-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+
+        .card-auth { display: flex; gap: 6px; margin-top: 10px; }
+        .auth-badge { font-size: 0.68rem; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
+        .auth-pass { background: rgba(52,211,153,0.15); color: var(--status-safe); border: 1px solid rgba(52,211,153,0.3); }
+        .auth-fail { background: rgba(244,63,94,0.15); color: var(--status-danger); border: 1px solid rgba(244,63,94,0.3); }
+        .auth-missing { background: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border-default); }
+
+        .side-panel { display: flex; flex-direction: column; gap: 16px; }
+        .stats-card { background: var(--bg-card); border-radius: 16px; padding: 22px; border: 1px solid var(--border-default); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-default); }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: var(--text-muted); font-size: 0.85rem; }
+        .stat-value { font-weight: 800; font-size: 1.05rem; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+        .map-container { flex: 1; border-radius: 16px; overflow: hidden; min-height: 280px; border: 1px solid var(--border-default); }
+
+        .toast-area { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast-msg {
+            padding: 12px 18px; border-radius: 12px; font-size: 0.85rem; animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-default); border-left: 4px solid var(--accent-violet);
+            color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+
+        .control-bar { flex-shrink: 0; display: flex; gap: 12px; align-items: center; background: var(--bg-card); padding: 12px 20px; border-radius: 14px; border: 1px solid var(--border-default); }
+        .control-bar input { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; width: 85px; font-family: 'JetBrains Mono', monospace; text-align: center; }
+
+        .status-pill { padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+        .status-connected { background: rgba(52,211,153,0.15); color: var(--status-safe); border: 1px solid rgba(52,211,153,0.3); }
+        .status-disconnected { background: rgba(244,63,94,0.15); color: var(--status-danger); border: 1px solid rgba(244,63,94,0.3); }
+        .status-scanning { background: rgba(124,58,237,0.15); color: var(--accent-violet); border: 1px solid rgba(124,58,237,0.3); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0 text-white fw-bold headline-slide-front"><i class="fas fa-bolt text-cyan me-2"></i> Live Demo</h4>
+        <span class="status-pill status-disconnected" id="conn-status">
+            <i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Disconnected
+        </span>
+    </div>
+
+    <div class="demo-body">
+        <!-- Left: scan area -->
+        <div class="scan-area">
+            <div class="control-bar">
+                <label style="font-size:0.85rem;color:var(--text-muted)">Emails:</label>
+                <input type="number" id="email-count" value="5" min="1" max="20">
+                <button class="btn btn-cyber-scan fw-bold" id="btn-scan" onclick="startScan()">
+                    <i class="fas fa-bolt me-1"></i> Start Live Scan
+                </button>
+                <button class="btn btn-outline-secondary" onclick="resetDemo()">Reset</button>
+                <div style="flex:1"></div>
+                <span id="scan-counter" style="font-size:0.85rem;color:var(--text-muted)"></span>
+            </div>
+
+            <div class="progress-section">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span id="progress-label" style="font-size:0.85rem;color:var(--text-muted)">Ready</span>
+                    <span id="progress-pct" style="font-size:0.85rem;color:var(--accent-cyan);font-weight:600">0%</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-fill" id="progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="cards-grid" id="cards-grid"></div>
+        </div>
+
+        <!-- Right: stats + map -->
+        <div class="side-panel">
+            <div class="stats-card">
+                <h6 style="color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Live Statistics</h6>
+                <div class="stat-row">
+                    <span class="stat-label">Scanned</span>
+                    <span class="stat-value" id="stat-scanned">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Phishing</span>
+                    <span class="stat-value" style="color:var(--status-danger)" id="stat-phishing">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Legitimate</span>
+                    <span class="stat-value" style="color:var(--status-safe)" id="stat-legit">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Avg Risk Score</span>
+                    <span class="stat-value" id="stat-avg-risk">&mdash;</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">High/Critical</span>
+                    <span class="stat-value" style="color:var(--status-warning)" id="stat-high">0</span>
+                </div>
+            </div>
+
+            <div class="stats-card map-container">
+                <h6 style="color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;font-size:0.75rem;letter-spacing:1px">Threat Origins</h6>
+                <div id="demo-map" style="height: calc(100% - 30px); border-radius: 8px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-area" id="toast-area"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+    var scanned = 0, phishingCount = 0, legitCount = 0, highCount = 0, riskSum = 0;
+    var totalExpected = 0;
+    var map, markers = [];
+
+    function initMap() {
+        map = L.map('demo-map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
+        L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; CartoDB'
+        }).addTo(map);
+    }
+    initMap();
+
+    var socket = io();
+
+    socket.on('connect', function() {
+        document.getElementById('conn-status').className = 'status-pill status-connected';
+        document.getElementById('conn-status').innerHTML = '<i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Connected';
+        socket.emit('join_demo');
+    });
+
+    socket.on('disconnect', function() {
+        document.getElementById('conn-status').className = 'status-pill status-disconnected';
+        document.getElementById('conn-status').innerHTML = '<i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Disconnected';
+    });
+
+    socket.on('connected', function(data) { showToast(data.message, 'info'); });
+
+    socket.on('scan_started', function(data) {
+        totalExpected = data.total;
+        document.getElementById('btn-scan').disabled = true;
+        document.getElementById('conn-status').className = 'status-pill status-scanning';
+        document.getElementById('conn-status').innerHTML = '<i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Scanning...';
+        document.getElementById('progress-label').textContent = data.message;
+        showToast(data.message, 'info');
+    });
+
+    socket.on('scan_progress', function(data) {
+        var pct = Math.round((data.current / data.total) * 100);
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-pct').textContent = pct + '%';
+        document.getElementById('progress-label').textContent = data.message;
+        document.getElementById('scan-counter').textContent = data.current + ' / ' + data.total;
+    });
+
+    socket.on('scan_result', function(data) {
+        scanned++;
+        var risk = data.risk_assessment || {};
+        var ml = data.ml || {};
+        var geo = data.geo || {};
+        var auth = (data.forensic || {}).authentication || {};
+        var riskLevel = (risk.risk_level || 'Unknown').toLowerCase();
+        var prediction = ml.prediction || 'unknown';
+
+        if (prediction === 'phishing') phishingCount++;
+        else if (prediction === 'legitimate') legitCount++;
+        riskSum += (risk.risk_score || 0);
+        if (riskLevel === 'high' || riskLevel === 'critical') highCount++;
+
+        document.getElementById('stat-scanned').textContent = scanned;
+        document.getElementById('stat-phishing').textContent = phishingCount;
+        document.getElementById('stat-legit').textContent = legitCount;
+        document.getElementById('stat-high').textContent = highCount;
+        document.getElementById('stat-avg-risk').textContent = Math.round(riskSum / scanned);
+
+        var card = document.createElement('div');
+        card.className = 'scan-card ' + prediction;
+
+        var authHtml = '';
+        if (auth.spf) authHtml += '<span class="auth-badge ' + (auth.spf === 'PASS' ? 'auth-pass' : 'auth-fail') + '">SPF ' + auth.spf + '</span>';
+        if (auth.dkim) authHtml += '<span class="auth-badge ' + (auth.dkim === 'PASS' ? 'auth-pass' : 'auth-fail') + '">DKIM ' + auth.dkim + '</span>';
+        if (auth.dmarc) authHtml += '<span class="auth-badge ' + (auth.dmarc === 'PASS' ? 'auth-pass' : 'auth-fail') + '">DMARC ' + auth.dmarc + '</span>';
+
+        card.innerHTML =
+            '<div class="card-header-row">' +
+                '<span class="card-email-id"><i class="fas fa-envelope me-1 text-muted"></i> ' + (data.email_id || '') + '</span>' +
+                '<span class="card-prediction ' + prediction + '">' + prediction.toUpperCase() + '</span>' +
+            '</div>' +
+            '<div class="card-snippet">' + (data.snippet || '') + '</div>' +
+            '<div class="card-metrics">' +
+                '<div class="metric"><div class="metric-value" style="color:' + getRiskColor(riskLevel) + '">' + (risk.risk_score || 0) + '</div><div class="metric-label">Risk</div></div>' +
+                '<div class="metric"><div class="metric-value">' + ((ml.confidence || 0) * 100).toFixed(0) + '%</div><div class="metric-label">Confidence</div></div>' +
+                '<div class="metric"><div class="metric-value">' + (data.urls_checked || 0) + '</div><div class="metric-label">URLs</div></div>' +
+            '</div>' +
+            '<div class="card-auth">' +
+                '<span class="badge-risk risk-' + riskLevel + '">' + risk.risk_level + '</span>' +
+                (geo.country_code ? '<span class="auth-badge auth-missing"><i class="fas fa-map-pin"></i> ' + geo.country_code + '</span>' : '') +
+                authHtml +
+            '</div>';
+
+        var grid = document.getElementById('cards-grid');
+        grid.insertBefore(card, grid.firstChild);
+
+        if (geo.latitude && geo.longitude) {
+            var color = riskLevel === 'critical' ? 'var(--status-danger)' : riskLevel === 'high' ? 'var(--status-warning)' : 'var(--accent-cyan)';
+            var marker = L.circleMarker([geo.latitude, geo.longitude], {
+                radius: 8, color: color, fillColor: color, fillOpacity: 0.8
+            }).bindPopup(
+                '<b>' + (geo.city || '') + ', ' + (geo.country || '') + '</b><br>' +
+                'Risk: ' + (risk.risk_level || '?') + ' (' + (risk.risk_score || 0) + ')<br>' +
+                'Prediction: ' + prediction
+            ).addTo(map);
+            markers.push(marker);
+            if (markers.length > 1) {
+                var group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            } else {
+                map.setView([geo.latitude, geo.longitude], 5);
+            }
+        }
+        showToast(data.message, prediction === 'phishing' ? 'danger' : 'success');
+    });
+
+    socket.on('scan_error', function(data) { showToast(data.message || 'Scan error', 'danger'); });
+
+    socket.on('scan_complete', function(data) {
+        document.getElementById('btn-scan').disabled = false;
+        document.getElementById('conn-status').className = 'status-pill status-connected';
+        document.getElementById('conn-status').innerHTML = '<i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle"></i> Connected';
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-pct').textContent = '100%';
+        document.getElementById('progress-label').textContent = 'Scan complete!';
+        showToast(data.message, 'info');
+        if (data.phishing_detected > 0) showToast(data.phishing_detected + ' PHISHING emails detected!', 'danger');
+    });
+
+    function startScan() {
+        var count = parseInt(document.getElementById('email-count').value) || 5;
+        socket.emit('start_demo_scan', { limit: count });
+    }
+
+    function resetDemo() {
+        scanned = 0; phishingCount = 0; legitCount = 0; highCount = 0; riskSum = 0;
+        document.getElementById('cards-grid').innerHTML = '';
+        document.getElementById('stat-scanned').textContent = '0';
+        document.getElementById('stat-phishing').textContent = '0';
+        document.getElementById('stat-legit').textContent = '0';
+        document.getElementById('stat-high').textContent = '0';
+        document.getElementById('stat-avg-risk').textContent = '\u2014';
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-pct').textContent = '0%';
+        document.getElementById('progress-label').textContent = 'Ready';
+        document.getElementById('scan-counter').textContent = '';
+        document.getElementById('btn-scan').disabled = false;
+        markers.forEach(function(m) { map.removeLayer(m); });
+        markers = [];
+        map.setView([20, 0], 2);
+    }
+
+    function getRiskColor(level) {
+        return { critical: 'var(--status-danger)', high: 'var(--status-warning)', medium: 'var(--status-warning)', low: 'var(--status-safe)', safe: 'var(--accent-cyan)' }[level] || 'var(--text-muted)';
+    }
+
+    function showToast(msg, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast-msg';
+        if (type === 'danger') toast.style.borderLeftColor = 'var(--status-danger)';
+        else if (type === 'success') toast.style.borderLeftColor = 'var(--status-safe)';
+        else toast.style.borderLeftColor = 'var(--accent-cyan)';
+        toast.textContent = msg;
+        var area = document.getElementById('toast-area');
+        area.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 5000);
+    }
+    </script>
+{% endblock %}

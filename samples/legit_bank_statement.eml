@@ -1,0 +1,33 @@
+From: statements@bankofamerica.com
+To: sabarish@gmail.com
+Subject: Monthly Account Statement - August 2026
+Date: Sun, 24 Aug 2026 23:00:00 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Authentication-Results: mx.gmail.com;
+	spf=pass (domain of bankofamerica.com designates 209.85.220.41 as permitted sender);
+	dkim=pass (2048-bit key);
+	dmarc=pass (p=REJECT)
+Received: from mail-bn3-sanjose.google.com (mx.google.com)
+	by mx.gmail.com with ESMTPS id abc123
+	for <sabarish@gmail.com>; Sun, 24 Aug 2026 23:00:01 -0500 (CDT)
+Return-Path: <statements@bankofamerica.com>
+Message-ID: <st-20260824-stmt@smtpprod.bankofamerica.com>
+
+Hello,
+
+Your monthly account statement for August 2026 is now available in your account.
+
+You can sign in to your account through the official website or mobile application to review your recent activity, transactions, and account information.
+
+No action is required if you have already reviewed your statement.
+
+If you have any questions or notice an activity you do not recognize, please contact our customer support team at 1-800-432-1000 or visit www.bankofamerica.com/contactus.
+
+Thank you,
+Customer Support Team
+Bank of America
+P.O. Box 25118, Tampa, FL 33622-5118
+
+This is an automated message. Please do not reply directly to this email.

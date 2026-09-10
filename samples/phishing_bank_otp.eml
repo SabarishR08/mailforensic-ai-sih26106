@@ -1,0 +1,35 @@
+From: alerts@secure-banking-verify.com
+To: victim@company.com
+Subject: [ACTION REQUIRED] Unusual Transaction Detected - Verify Now!
+Date: Mon, 25 Aug 2026 08:15:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: 45.77.65.211
+Received: from smtp-relay.cn (45.77.65.211)
+	by mx.gmail.com with ESMTPS id x9y8z7
+	for <victim@company.com>; Mon, 25 Aug 2026 08:15:03 -0500 (CDT)
+Return-Path: <bounce@secure-banking-verify.com>
+Message-ID: <alert-9281-urgent@secure-banking-verify.com>
+
+Dear Customer,
+
+We have detected an unauthorized transaction of $2,847.50 on your account ending in ****4521.
+
+Transaction Details:
+- Amount: $2,847.50
+- Merchant: UNKNOWN INTERNATIONAL TRANSFER
+- Location: Lagos, Nigeria
+- Date: August 25, 2026 03:42 UTC
+- Reference: TX-2026-9281-4455
+
+If this was NOT you, immediately secure your account by clicking below:
+http://45.77.65.211/bank-security/verify?acct=4521&ref=TX9281
+
+You must verify within 1 hour or the transaction will be processed and funds deducted permanently.
+
+DO NOT reply to this email. Call us at 1-800-555-0199 for immediate assistance.
+
+Your Bank Security Team
+National Trust Bank
+FDIC Member - Equal Housing Lender
