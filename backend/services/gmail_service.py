@@ -11,10 +11,19 @@ import base64
 import logging
 from pathlib import Path
 from bs4 import BeautifulSoup
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+try:
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    GOOGLE_AUTH_AVAILABLE = False
+    Request = None
+    Credentials = None
+    InstalledAppFlow = None
+    build = None
+
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 MAX_EMAIL_SIZE = 50000
@@ -31,14 +40,10 @@ logger = logging.getLogger(__name__)
 
 
 def authenticate_gmail():
-    """
-    Authenticate Gmail using env vars (for deployment) or local files.
-    
-    Environment Variables:
-        GMAIL_CREDENTIALS_JSON: Full credentials.json content as string
-        GMAIL_REFRESH_TOKEN: OAuth2 refresh token
-    """
+    if not GOOGLE_AUTH_AVAILABLE:
+        raise FileNotFoundError("Google Auth library not installed. Operating in local demo/sample mode.")
     creds = None
+
     
     # Method 1: Environment variables (for deployment)
     credentials_json = os.getenv('GMAIL_CREDENTIALS_JSON')

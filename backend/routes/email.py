@@ -6,7 +6,12 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from flask import Blueprint, render_template, request, jsonify
-from flask_socketio import join_room
+try:
+    from flask_socketio import join_room
+except ImportError:
+    def join_room(*args, **kwargs):
+        pass
+
 from backend.services.gmail_service import fetch_recent_emails, GmailAuthError
 from backend.services.sample_emails import get_sample_emails
 from backend.services.email_scanner import scan_emails, scan_emails_streaming

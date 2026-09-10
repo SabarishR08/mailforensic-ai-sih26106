@@ -1,6 +1,7 @@
 """
 Forensic PDF Report Generator
 Generates per-email forensic breakdown reports using ReportLab.
+Updated with URL Intelligence & QRishing Threat Breakdown.
 """
 
 import os
@@ -49,7 +50,7 @@ class ForensicReportGenerator:
         elements.append(Paragraph("Email Forensic Analysis Report", title_style))
         elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", body_style))
         elements.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#283593')))
-        elements.append(Spacer(1, 20))
+        elements.append(Spacer(1, 15))
 
         # --- Risk Summary ---
         risk = analysis.get('risk_assessment', {})
@@ -61,8 +62,8 @@ class ForensicReportGenerator:
         risk_data = [
             ['Risk Score', f'{risk_score}/100'],
             ['Risk Level', risk_level],
-            ['Trust Score', f"{analysis.get('trust_score', 'N/A')}/100"],
-            ['Trust Level', analysis.get('trust_level', 'Unknown')],
+            ['Trust Score', f"{analysis.get('forensic', {}).get('trust_score', 'N/A')}/100"],
+            ['Trust Level', analysis.get('forensic', {}).get('trust_level', 'Unknown')],
         ]
         risk_table = Table(risk_data, colWidths=[2*inch, 4*inch])
         risk_table.setStyle(TableStyle([
@@ -70,21 +71,68 @@ class ForensicReportGenerator:
             ('TEXTCOLOR', (1, 1), (1, 1), colors.HexColor(risk_color)),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('PADDING', (0, 0), (-1, -1), 8),
+            ('PADDING', (0, 0), (-1, -1), 6),
         ]))
         elements.append(risk_table)
         elements.append(Spacer(1, 15))
 
+        # --- QR Code / QRishing Analysis ---
+        qr = analysis.get('qr_analysis', {})
+        if qr.get('qr_detected'):
+            elements.append(Paragraph("QR Code / QRishing Analysis", heading_style))
+            qr_status = "CRITICAL (QRishing Threat Detected)" if qr.get('qrishing_threat') else "Detected (Clean Payload)"
+            qr_color = "#d32f2f" if qr.get('qrishing_threat') else "#388e3c"
+            
+            payload_str = ", ".join(qr.get('payloads', []))[:100] or "None"
+            qr_data = [
+                ['QR Status', qr_status],
+                ['QR Count', str(qr.get('qr_count', 0))],
+                ['Decoded Payload', payload_str],
+            ]
+            qr_table = Table(qr_data, colWidths=[2*inch, 4*inch])
+            qr_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#ffebee')),
+                ('TEXTCOLOR', (1, 0), (1, 0), colors.HexColor(qr_color)),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('PADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(qr_table)
+            elements.append(Spacer(1, 15))
+
+        # --- URL Intelligence Analysis ---
+        url_intel = analysis.get('url_intelligence', {})
+        if url_intel and url_intel.get('total_urls', 0) > 0:
+            elements.append(Paragraph("URL Intelligence Breakdown", heading_style))
+            url_threats = url_intel.get('url_threats', [])
+            threats_str = ", ".join(url_threats) if url_threats else "None detected"
+            
+            url_data = [
+                ['Total URLs Extracted', str(url_intel.get('total_urls', 0))],
+                ['Max URL Risk Score', f"{url_intel.get('max_risk_score', 0)}/100"],
+                ['Detected Threats', threats_str[:120]],
+            ]
+            url_table = Table(url_data, colWidths=[2*inch, 4*inch])
+            url_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8eaf6')),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('PADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(url_table)
+            elements.append(Spacer(1, 15))
+
         # --- Email Headers ---
+        forensic = analysis.get('forensic', {})
         elements.append(Paragraph("Email Headers", heading_style))
         header_data = [
-            ['From', analysis.get('from_address', 'N/A')],
-            ['Reply-To', analysis.get('reply_to', 'N/A')],
-            ['Return-Path', analysis.get('return_path', 'N/A')],
-            ['Subject', analysis.get('subject', 'N/A')],
-            ['Date', analysis.get('date', 'N/A')],
-            ['Message-ID', analysis.get('message_id', 'N/A')[:60]],
-            ['X-Mailer', analysis.get('x_mailer', 'N/A')],
+            ['From', forensic.get('from_address', analysis.get('from', 'N/A'))],
+            ['Reply-To', forensic.get('reply_to', 'N/A')],
+            ['Return-Path', forensic.get('return_path', 'N/A')],
+            ['Subject', forensic.get('subject', analysis.get('subject', 'N/A'))],
+            ['Date', forensic.get('date', analysis.get('date', 'N/A'))],
+            ['Message-ID', str(forensic.get('message_id', analysis.get('email_id', 'N/A')))[:60]],
+            ['X-Mailer', forensic.get('x_mailer', 'N/A')],
         ]
         header_table = Table(header_data, colWidths=[1.5*inch, 4.5*inch])
         header_table.setStyle(TableStyle([
@@ -98,7 +146,7 @@ class ForensicReportGenerator:
         elements.append(Spacer(1, 15))
 
         # --- Authentication ---
-        auth = analysis.get('authentication', {})
+        auth = forensic.get('authentication', {})
         elements.append(Paragraph("Authentication Analysis", heading_style))
         auth_data = [
             ['Check', 'Status', 'Result'],
@@ -110,53 +158,13 @@ class ForensicReportGenerator:
         auth_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#283593')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('PADDING', (0, 0), (-1, -1), 6),
             ('ALIGN', (2, 1), (2, -1), 'CENTER'),
         ]))
         elements.append(auth_table)
         elements.append(Spacer(1, 15))
-
-        # --- Routing / Received Chain ---
-        routing = analysis.get('routing', {})
-        hops = routing.get('hops', [])
-        if hops:
-            elements.append(Paragraph("Routing Chain (Received Headers)", heading_style))
-            hop_data = [['Hop', 'From', 'By', 'IP', 'Geo', 'Suspicious']]
-            for hop in hops:
-                geo = hop.get('geo', {})
-                geo_str = f"{geo.get('city', '?')}, {geo.get('country_code', '?')}" if geo else '-'
-                hop_data.append([
-                    str(hop.get('hop_number', '')),
-                    str(hop.get('from_host', ''))[:25],
-                    str(hop.get('by_host', ''))[:25],
-                    str(hop.get('ip', ''))[:15],
-                    geo_str[:20],
-                    '⚠ YES' if hop.get('suspicious') else 'no',
-                ])
-            hop_table = Table(hop_data, colWidths=[0.5*inch, 1.3*inch, 1.3*inch, 1.1*inch, 1.3*inch, 0.8*inch])
-            hop_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#283593')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTSIZE', (0, 0), (-1, -1), 7),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('PADDING', (0, 0), (-1, -1), 4),
-            ]))
-            elements.append(hop_table)
-            elements.append(Spacer(1, 15))
-
-        # --- Header Mismatches ---
-        mismatches = analysis.get('mismatches', [])
-        if mismatches:
-            elements.append(Paragraph("Header Mismatches Detected", heading_style))
-            for mm in mismatches:
-                severity_color = '#d32f2f' if mm.get('severity') == 'HIGH' else '#f57c00'
-                elements.append(Paragraph(
-                    f"<b>[{mm.get('severity', '')}]</b> {mm.get('type', '')}: {mm.get('detail', '')}",
-                    ParagraphStyle('Mismatch', parent=body_style, textColor=colors.HexColor(severity_color))
-                ))
-            elements.append(Spacer(1, 15))
 
         # --- Risk Breakdown ---
         breakdown = risk.get('breakdown', {})
@@ -170,7 +178,7 @@ class ForensicReportGenerator:
             bd_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#283593')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
                 ('PADDING', (0, 0), (-1, -1), 6),
             ]))

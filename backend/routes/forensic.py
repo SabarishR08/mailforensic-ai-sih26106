@@ -12,6 +12,8 @@ from backend.services.risk_scoring import RiskScoringEngine
 from backend.services.ml_predictor import get_ml_predictor
 from backend.services.forensic_report import ForensicReportGenerator
 from backend.services.threat_intelligence import unified_url_check
+from backend.services.url_intelligence import URLAnalyzer
+from backend.services.qr_service import QREmailAnalyzer
 from backend.utils.url_utils import extract_urls
 from backend.models import EmailScanResult, db
 from backend.spa import spa_enabled, spa_index
@@ -59,12 +61,14 @@ def api_analyze_eml():
     Accept a .eml file upload and run the full forensic analysis pipeline.
     No Gmail credentials needed — works entirely offline with a local file.
     
-    Pipeline: parse .eml → ML prediction → forensic header analysis
-    → URL threat intel → geo enrichment → risk scoring → full report JSON
+    Pipeline: parse .eml → extract QR codes → ML prediction → forensic header analysis
+    → URL intelligence → threat intel → geo enrichment → risk scoring → full report JSON
     """
+    attachments = []
+    eml_text = ""
+
     # --- 1. Get the uploaded file ---
     if 'file' not in request.files:
-        # Fallback: accept raw .eml text in JSON body
         if request.is_json and request.json.get('eml_text'):
             eml_text = request.json['eml_text']
         else:
@@ -78,9 +82,19 @@ def api_analyze_eml():
         eml_bytes = f.read()
         try:
             msg = BytesParser(policy=policy.default).parsebytes(eml_bytes)
+            # Extract attachments
+            for part in msg.walk():
+                content_type = part.get_content_type()
+                filename = part.get_filename()
+                if content_type.startswith('image/') or (filename and any(filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp'])):
+                    try:
+                        content_data = part.get_payload(decode=True)
+                        if content_data:
+                            attachments.append({'filename': filename or 'image.png', 'content': content_data})
+                    except Exception:
+                        pass
         except Exception as e:
             return jsonify({'error': f'Failed to parse .eml file: {e}'}), 400
-        # Reconstruct as string for ForensicAnalyzer (it uses message_from_string)
         eml_text = eml_bytes.decode('utf-8', errors='replace')
 
     # --- 2. Parse the email for body text + metadata ---
@@ -89,58 +103,95 @@ def api_analyze_eml():
     except Exception as e:
         return jsonify({'error': f'Failed to parse email: {e}'}), 400
 
-    # Extract body (prefer plain text, fall back to HTML)
     body = ''
+    raw_body = ''
     if msg.is_multipart():
         for part in msg.walk():
             ct = part.get_content_type()
             if ct == 'text/plain':
                 body = part.get_content() if hasattr(part, 'get_content') else part.get_payload(decode=True).decode('utf-8', errors='replace')
-                break
-            elif ct == 'text/html' and not body:
-                body = part.get_content() if hasattr(part, 'get_content') else part.get_payload(decode=True).decode('utf-8', errors='replace')
+            elif ct == 'text/html':
+                raw_body = part.get_content() if hasattr(part, 'get_content') else part.get_payload(decode=True).decode('utf-8', errors='replace')
+                if not body:
+                    body = raw_body
     else:
         payload = msg.get_payload(decode=True)
         body = payload.decode('utf-8', errors='replace') if payload else str(msg)
+        raw_body = body
 
     if not body.strip():
         body = msg.get('Subject', '(no body)')
 
-    # --- 3. Run the full analysis pipeline ---
+    # --- 3. QR Code Extraction ---
+    email_data = {
+        'body': body,
+        'raw_body': raw_body,
+        'attachments': attachments
+    }
+    qr_analysis = QREmailAnalyzer.extract_qr_from_email(email_data)
+
+    # --- 4. Run the full analysis pipeline ---
     ml_predictor = get_ml_predictor()
     geo_service = get_geo_service()
     forensic = ForensicAnalyzer()
 
-    # 3a. ML Prediction
+    # 4a. ML Prediction
     ml_prediction, ml_confidence = (
         ml_predictor.predict_email(body)
         if ml_predictor.is_email_model_loaded()
         else ('unknown', 0.5)
     )
 
-    # 3b. Forensic header analysis with geo enrichment
+    # 4b. Forensic header analysis with geo enrichment
     forensic_result = forensic.analyze(eml_text, geo_service=geo_service)
 
-    # 3c. URL threat intelligence (sync, up to 5 URLs)
-    urls = extract_urls(body)
+    # 4c. Extract all URLs (body, headers, QR payloads)
+    body_urls = extract_urls(body + ' ' + raw_body)
+    header_urls = extract_urls(eml_text)
+    qr_urls = qr_analysis.get('urls_found', [])
+    all_urls = list(dict.fromkeys(body_urls + header_urls + qr_urls))
+
+    # 4d. URL Intelligence Analysis
+    url_intel_results = {}
+    max_url_intel_score = 0
+    url_threats_list = []
+    for url in all_urls[:10]:
+        try:
+            intel = URLAnalyzer.full_analysis(url, check_redirects=False)
+            url_intel_results[url] = intel
+            if intel.get('risk_score', 0) > max_url_intel_score:
+                max_url_intel_score = intel.get('risk_score', 0)
+            if intel.get('threats'):
+                url_threats_list.extend(intel['threats'])
+        except Exception:
+            pass
+
+    url_intelligence_summary = {
+        'total_urls': len(all_urls),
+        'max_risk_score': max_url_intel_score,
+        'url_threats': list(dict.fromkeys(url_threats_list)),
+        'details': url_intel_results,
+    }
+
+    # 4e. Threat Intelligence (VT, SafeBrowsing, RDAP)
     url_results = {}
     max_ti_score = 0
-    if urls:
+    if all_urls:
         try:
             loop = asyncio.new_event_loop()
-            tasks = [unified_url_check(url) for url in urls[:5]]
+            tasks = [unified_url_check(url) for url in all_urls[:5]]
             results = loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
             loop.close()
-            for url, result in zip(urls[:5], results):
+            for url, result in zip(all_urls[:5], results):
                 if not isinstance(result, Exception):
                     url_results[url] = result
                     ti = result.get('threat_score', 0)
                     if ti > max_ti_score:
                         max_ti_score = ti
-        except Exception as e:
-            pass  # URL checks are best-effort
+        except Exception:
+            pass
 
-    # 3d. Geo enrichment of sender IP
+    # 4f. Geo enrichment of sender IP
     origin_ip = forensic_result.get('routing', {}).get('origin_ip')
     geo_data = {}
     if origin_ip:
@@ -149,16 +200,18 @@ def api_analyze_eml():
         except Exception:
             pass
 
-    # 3e. Unified risk score
+    # 4g. Unified Risk Scoring
     risk_assessment = RiskScoringEngine.calculate({
         'ml_result': {'prediction': ml_prediction, 'confidence': ml_confidence},
         'threat_intel': {'threat_score': max_ti_score},
+        'url_intelligence': url_intelligence_summary,
+        'qr_analysis': qr_analysis,
         'forensic': forensic_result,
         'geo_data': geo_data,
         'content_analysis': {'nlp_result': {}},
     })
 
-    # --- 4. Assemble full report ---
+    # --- 5. Assemble full report ---
     report = {
         'email_id': msg.get('Message-ID', 'unknown'),
         'subject': msg.get('Subject', ''),
@@ -167,19 +220,21 @@ def api_analyze_eml():
         'date': msg.get('Date', ''),
         'body_preview': body[:500],
         'body_length': len(body),
-        'urls_found': urls,
+        'urls_found': all_urls,
         'ml': {
             'prediction': ml_prediction,
             'confidence': round(ml_confidence, 4),
             'model_loaded': ml_predictor.is_email_model_loaded(),
         },
         'forensic': forensic_result,
+        'url_intelligence': url_intelligence_summary,
+        'qr_analysis': qr_analysis,
         'url_results': url_results,
         'geo': geo_data,
         'risk_assessment': risk_assessment,
     }
 
-    # --- 5. Persist to DB ---
+    # --- 6. Persist to DB ---
     try:
         scan = EmailScanResult(
             email_id=report['email_id'],

@@ -930,35 +930,17 @@
         /* ========================================================= */
         /* ACCESSIBILITY & RESPONSIVE DESIGN                         */
         /* ========================================================= */
-        @media (max-width: 991px) {
-            .sidebar { width: 70px; padding: 16px 0; }
-            .sidebar .brand-text, .sidebar .brand-tag, .sidebar .nav-link span, .sidebar-footer { display: none; }
-            .sidebar .brand { justify-content: center; padding: 0 0 16px; }
-            .sidebar .nav-link { justify-content: center; padding: 12px; }
-            .sidebar .nav-link i { margin-right: 0; }
-            .main-content { margin-left: 70px; padding: 20px 16px; }
+        .sidebar-toggle-btn {
+            display: flex !important;
         }
 
-        /* Desktop (>=992px): pin the sidebar as a persistent rail so the
-           drawer + blur backdrop never cover the page content. */
-        @media (min-width: 992px) {
-            .sidebar {
-                transform: translateX(0);
-            }
-            body:not(.sidebar-open) .sidebar {
-                transform: translateX(0);
-            }
-            .sidebar-backdrop {
-                display: none !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-            .sidebar-toggle-btn {
-                display: none !important;
-            }
-            .main-content {
-                margin-left: var(--sidebar-width) !important;
-            }
+        .main-content {
+            margin-left: 0 !important;
+        }
+
+        @media (max-width: 767px) {
+            .main-content { padding: 20px 16px; }
+            .sidebar-toggle-btn { top: 14px; left: 16px; width: 42px; height: 42px; font-size: 1rem; }
         }
 
         @media (pointer: coarse) {
@@ -1005,6 +987,7 @@
                 <span class="brand-text">AI Forensics</span>
                 <span class="brand-tag">SIH 2026</span>
             </div>
+
             <nav class="nav flex-column mt-3">
                 <a class="nav-link {% if request.endpoint == 'dashboard.dashboard' %}active{% endif %}" href="/dashboard">
                     <i class="fas fa-chart-line"></i> <span>Dashboard</span>
@@ -1025,6 +1008,8 @@
                     <i class="fas fa-play-circle"></i> <span>Live Demo</span>
                 </a>
             </nav>
+
+
         </div>
         <div class="sidebar-footer">
             <div class="d-flex align-items-center justify-content-between">
@@ -1237,6 +1222,110 @@
         }
     });
     </script>
+    <!-- UNIFIED SECURITY SUITE MASTER MODAL -->
+    <div class="modal fade" id="unifiedSecurityHubModal" tabindex="-1" aria-labelledby="unifiedHubModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background: #0B0B0F; border: 1px solid #222229 !important; border-radius: 20px;">
+                <div class="modal-header border-bottom border-dark px-4 py-3" style="background: #111116;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="p-2 rounded-3" style="background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(124, 58, 237, 0.3);">
+                            <i class="fas fa-bolt text-warning fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="unifiedHubModalLabel">⚡ Unified AI Security Command Hub</h5>
+                            <small class="text-muted">SIH 2026 — All 6 Threat Detection & Forensic Modules in One Place</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Top Instant Action Banner -->
+                    <div class="card p-3 mb-4 text-white" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(34, 211, 238, 0.15)); border: 1px solid rgba(124, 58, 237, 0.4); border-radius: 14px;">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div>
+                                <h6 class="fw-bold mb-1 text-white"><i class="fas fa-rocket text-cyan me-2"></i>Run Full Unified Pipeline Scan</h6>
+                                <p class="small text-muted mb-0">Executes ML Classification + QR Code Extraction + URL Intelligence + Geolocation + Header Forensics.</p>
+                            </div>
+                            <a href="/email/scan" class="btn btn-sm px-3 py-2 fw-bold text-white shadow-sm" style="background: linear-gradient(135deg, #7C3AED, #22D3EE); border-radius: 8px;">
+                                <i class="fas fa-play me-1"></i> Launch Scan Now
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- All 6 Navigation Modules Grid -->
+                    <h6 class="text-secondary fw-bold mb-3 text-uppercase small" style="letter-spacing: 0.8px;"><i class="fas fa-th-large me-2"></i>Command Center Modules</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4 col-6">
+                            <a href="/dashboard" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-cyan" style="background: rgba(34, 211, 238, 0.1);"><i class="fas fa-chart-line fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Dashboard</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Metrics & Analytics</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <a href="/email/scan" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-violet" style="background: rgba(124, 58, 237, 0.1);"><i class="fas fa-envelope-open-text fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Email Scanner</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">ML + QR + URL Intel</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <a href="/forensic/scan" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-warning" style="background: rgba(251, 191, 36, 0.1);"><i class="fas fa-microscope fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Forensic .EML</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Header Analysis & PDF</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <a href="/threat-map" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-info" style="background: rgba(6, 182, 212, 0.1);"><i class="fas fa-globe fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Threat Map</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Geo Trace IP Map</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <a href="/dashboard/threat-intel" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-danger" style="background: rgba(244, 63, 94, 0.1);"><i class="fas fa-chart-area fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Threat Intel</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">VT, SafeBrowsing, RDAP</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <a href="/email/demo" class="card p-3 text-decoration-none h-100 d-block" style="background: #14141A; border: 1px solid #222229; border-radius: 12px;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2 rounded-3 text-success" style="background: rgba(52, 211, 153, 0.1);"><i class="fas fa-play-circle fs-5"></i></div>
+                                    <div>
+                                        <div class="fw-bold text-white">Live Demo</div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">SocketIO Real-time</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

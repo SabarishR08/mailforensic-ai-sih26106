@@ -1,7 +1,32 @@
 """
 Sample Email Data for Demo Mode
-Realistic phishing, malware, and legitimate emails for testing
+Realistic phishing, malware, QRishing, and legitimate emails for testing
 """
+
+import io
+import base64
+import logging
+
+logger = logging.getLogger(__name__)
+
+def generate_qr_b64(url: str) -> str:
+    """Generate a base64 PNG QR code image string for sample emails"""
+    try:
+        import qrcode
+        qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=8, border=2)
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode("ascii")
+    except Exception as e:
+        logger.debug(f"QR generation helper error: {e}")
+        return ""
+
+
+QR_PHISH_URL = "http://mfa-verify.tk/login"
+QR_B64_IMAGE = generate_qr_b64(QR_PHISH_URL)
 
 
 SAMPLE_EMAILS = [
@@ -273,6 +298,39 @@ DHL Express Customer Service""",
             "Return-Path": "<bounce@dhl-delivery-track.com>",
             "X-Originating-IP": "194.36.189.42"
         }
+    },
+    {
+        "id": "sample_009_qrishing_login",
+        "body": f"""Security Notice: Scan QR Code to Verify Account
+
+Dear User,
+
+Our automated systems detected an unauthorized login attempt from an unknown device.
+To protect your account, please scan the QR code below with your mobile phone camera to verify your identity.
+
+Scan QR Code immediately:
+<img src="data:image/png;base64,{QR_B64_IMAGE}" alt="Verification QR Code">
+
+Or visit the secure portal link encoded in the QR code.
+You have 12 hours to complete multi-factor authentication verification.
+
+Security Desk
+Global Auth Services""",
+        "raw_body": f"""<html><body>
+<p><b>Security Notice: Scan QR Code to Verify Account</b></p>
+<p>Please scan the QR code below with your phone camera:</p>
+<img src="data:image/png;base64,{QR_B64_IMAGE}">
+</body></html>""",
+        "headers": {
+            "From": "mfa-security@verify-account.tk",
+            "To": "sabarish.sec.lab@gmail.com",
+            "Subject": "URGENT: Scan QR Code to Verify Mobile Authentication",
+            "Date": "Thu, 25 Jan 2024 18:40:00 +0000",
+            "Message-ID": "<sample_009@qrishing-samples.com>",
+            "Received": "from mail.verify-account.tk (185.220.101.50) by gmail.com",
+            "Return-Path": "<bounce@verify-account.tk>",
+            "X-Originating-IP": "185.220.101.50"
+        }
     }
 ]
 
@@ -294,7 +352,7 @@ def get_sample_emails(limit=None):
         email = {
             'id': sample['id'],
             'body': sample['body'],
-            'raw_body': sample['body'],
+            'raw_body': sample.get('raw_body', sample['body']),
             'headers': sample.get('headers', {}),
             'raw_headers': '\n'.join(f'{k}: {v}' for k, v in sample.get('headers', {}).items())
         }
