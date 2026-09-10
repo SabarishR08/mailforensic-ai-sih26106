@@ -91,8 +91,26 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
         'details': url_intel_results,
     }
 
-    # 5. NLP Classification (Gemini)
+    # 5. Multi-LLM API Classification (Groq -> Gemini -> NVIDIA -> ML fallback)
     nlp_result = await classify_email_nlp(body)
+
+    # If Multi-LLM returned a high-confidence prediction, fuse it with ML prediction
+    # to eliminate false positives & false negatives
+    llm_cat = (nlp_result.get('category') or '').strip().lower()
+    llm_conf = float(nlp_result.get('confidence') or 0.0)
+    llm_provider = nlp_result.get('provider', '')
+
+    final_prediction = ml_prediction
+    final_confidence = ml_confidence
+
+    if llm_cat in ['phishing', 'legitimate', 'suspicious'] and llm_conf >= 0.7:
+        # LLM overrides or reinforces ML
+        if ml_prediction != llm_cat:
+            logger.info(f"AI LLM ({llm_provider}) overriding ML prediction '{ml_prediction}' -> '{llm_cat}' (conf={llm_conf})")
+            final_prediction = llm_cat
+            final_confidence = max(ml_confidence, llm_conf)
+        else:
+            final_confidence = max(ml_confidence, llm_conf)
 
     # 6. Forensic Analysis (if headers available, or synthesize from available content)
     forensic_result = {}
@@ -108,7 +126,7 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
 
     # 8. Calculate unified composite risk score
     risk_assessment = RiskScoringEngine.calculate({
-        'ml_result': {'prediction': ml_prediction, 'confidence': ml_confidence},
+        'ml_result': {'prediction': final_prediction, 'confidence': final_confidence},
         'threat_intel': {'threat_score': max_ti_score},
         'url_intelligence': url_intelligence_summary,
         'qr_analysis': qr_analysis,
@@ -121,7 +139,12 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
         'email_id': email_id,
         'index': index,
         'snippet': body[:SNIPPET_LENGTH],
-        'ml': {'prediction': ml_prediction, 'confidence': round(ml_confidence, 4)},
+        'ml': {
+            'prediction': final_prediction,
+            'confidence': round(final_confidence, 4),
+            'raw_ml_prediction': ml_prediction,
+            'ai_provider': llm_provider,
+        },
         'urls_checked': len(all_urls),
         'urls_found': all_urls,
         'url_intelligence': url_intelligence_summary,
