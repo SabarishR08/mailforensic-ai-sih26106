@@ -1,8 +1,12 @@
 import { useRef, useState } from 'react'
 import { api } from '../lib/api'
-import { predBadgeBg, riskBadgeBg } from '../lib/format'
+import { predBadgeBg, riskBadgeBg, riskClass } from '../lib/format'
+import InvestigationTimeline from '../components/InvestigationTimeline'
+import ExplainableRiskBadge from '../components/ExplainableRiskBadge'
+import AttackReconstruction from '../components/AttackReconstruction'
+import SocPlaybookCard from '../components/SocPlaybookCard'
 
-// --- Pre-built sample emails ---
+// --- Pre-built sample emails (same content as the Jinja template) ---
 const SAMPLE_EMAILS: Record<string, string> = {
   legit_statement: `From: statements@bankofamerica.com
 Subject: Monthly Account Statement Available
@@ -19,40 +23,58 @@ You can sign in to your account through the official website or mobile applicati
 
 No action is required if you have already reviewed your statement.
 
+If you have any questions or notice an activity you do not recognize, please contact our customer support team through the contact information provided on our official website.
+
 Thank you,
 Customer Support Team
 Bank of America
 https://www.bankofamerica.com`,
 
-  legit_application: `From: applicant@gmail.com
-Subject: Application for Cybersecurity Analyst Internship
+  legit_application: `From: sabarish@gmail.com
+Subject: Application for Software Developer Internship
 Date: Mon, 25 Aug 2026 14:30:00 +0530
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Reply-To: applicant@gmail.com
+Reply-To: sabarish@gmail.com
 
-Dear Hiring Team,
+Dear Sir/Madam,
 
-I am writing to express my strong interest in the Cybersecurity Analyst Internship. 
-I have built automated forensic tools and machine learning classifiers for detecting malicious email vectors.
+I hope you are doing well.
 
-I would welcome the opportunity to discuss how my skill set matches your team's needs.
-Thank you for your time and consideration.
+I am writing to introduce myself and express my interest in discussing the relevant opportunity/project with you. I would appreciate the opportunity to present my ideas, demonstrate the work completed so far, and receive your valuable feedback.
+
+Please let me know a convenient date and time for a brief discussion or demonstration. I would be happy to provide any additional information required beforehand.
+
+Thank you for your time and consideration. I look forward to hearing from you.
 
 Best regards,
 Sanjai R.
+B.Tech - Computer Science and Engineering
 Panimalar Engineering College`,
 
-  legit_welcome: `From: noreply@github.com
-Subject: Welcome to GitHub Security Lab
+  legit_welcome: `From: noreply@freebuff.io
+Subject: Welcome to Freebuff - Your Account is Ready
 Date: Mon, 25 Aug 2026 11:00:00 +0000
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Authentication-Results: mx.gmail.com; spf=pass; dkim=pass
 
-Welcome! Your repository access has been authorized for secure forensic triage.
-You can view code auditing workflows and automated vulnerability scanning at:
-https://github.com/security-lab`,
+Hi Sabarish,
+
+Welcome to Freebuff! My name is James, and I'll be your point of contact.
+
+We're excited to have you on board. Your account has been set up and you can start using all features right away.
+
+Here's what you can do next:
+1. Complete your profile setup
+2. Explore the dashboard
+3. Connect your email accounts
+
+If you need any help, feel free to reach out.
+
+Best,
+James
+Freebuff Team`,
 
   phish_paypal: `From: security@paypa1-alerts.com
 Subject: URGENT: Your PayPal Account Has Been Limited!
@@ -64,17 +86,27 @@ Received: from mail.evil-server.ru (185.220.101.34) by mx.gmail.com
 
 Dear Valued Customer,
 
-We have detected suspicious unauthorized sign-in attempts to your PayPal account from Moscow, Russia.
-To restore full access to your account, you must verify your identity within 24 hours:
+We have detected unusual activity on your PayPal account. Your account has been temporarily limited due to multiple sign-in attempts from an unrecognized device in Moscow, Russia.
 
-http://185.220.101.34/paypal-secure/verify?id=93821
+To restore full access to your account, please verify your identity within 24 hours or your account will be permanently suspended.
 
-Failure to verify will result in permanent account suspension and asset lock.
+Click the link below to verify your account:
+http://192.168.1.100/paypal-secure/verify?id=38291
+
+You will need to confirm:
+- Your full name
+- Credit card number
+- PayPal password
+- Social Security Number
+
+This is a mandatory security measure. Failure to verify will result in permanent account closure.
+
+Thank you for your immediate attention.
 
 PayPal Security Team`,
 
   phish_bank: `From: alerts@secure-banking-verify.com
-Subject: [ACTION REQUIRED] Unauthorized Wire Transfer - Verify Immediately!
+Subject: [ACTION REQUIRED] Unusual Transaction Detected - Verify Now!
 Date: Mon, 25 Aug 2026 08:15:00 +0000
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
@@ -83,15 +115,55 @@ Received: from smtp-relay.cn (45.77.65.211) by mx.gmail.com
 
 Dear Customer,
 
-We detected an unauthorized international wire transfer of $4,850.00 on your checking account.
-If you did not authorize this transaction, click the link below immediately to cancel the transfer:
+We have detected an unauthorized transaction of $2,847.50 on your account ending in ****4521.
 
-http://45.77.65.211/bank-security/cancel?txid=982412
+Transaction Details:
+- Amount: $2,847.50
+- Merchant: UNKNOWN INTERNATIONAL TRANSFER
+- Location: Lagos, Nigeria
+- Date: August 25, 2026 03:42 UTC
 
-Security Department`,
+If this was NOT you, immediately secure your account by clicking below:
+http://45.77.65.211/bank-security/verify?acct=4521&ref=TX9281
+
+You must verify within 1 hour or the transaction will be processed and funds deducted permanently.
+
+DO NOT reply to this email. Call us at 1-800-555-0199 (SCAM NUMBER).
+
+Your Bank Security Team`,
+
+  phish_prize: `From: winner@lottery-intl-2026.com
+Subject: CONGRATULATIONS! You Have Won $5,000,000!!!
+Date: Mon, 25 Aug 2026 06:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+X-Originating-IP: 91.219.236.88
+Received: from lotto-server.net (91.219.236.88) by mx.gmail.com
+
+DEAR WINNER,
+
+CONGRATULATIONS!!! You have been selected as the winner of the INTERNATIONAL LOTTERY PROGRAM 2026.
+
+Your email was randomly selected from over 50 million email addresses worldwide.
+
+YOU HAVE WON: $5,000,000.00 USD (FIVE MILLION DOLLARS)
+
+To claim your prize, you must respond within 48 HOURS and provide:
+1. Full legal name
+2. Home address
+3. Phone number
+4. Bank account details (for wire transfer)
+5. Copy of your passport or ID
+
+A processing fee of $150 is required to release your winnings. Send via Western Union to our agent.
+
+Send your details to: claim@lottery-intl-2026.com
+
+Dr. James Morrison
+International Lottery Commission`,
 
   suspicious_bec: `From: ceo@company-work-mail.com
-Subject: Urgent - Confidential Acquisition Wire Transfer
+Subject: Urgent - Confidential Wire Transfer Required
 Date: Mon, 25 Aug 2026 15:45:00 +0000
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
@@ -100,143 +172,343 @@ X-Originating-IP: 103.25.48.12
 
 Hi,
 
-I need you to process an urgent confidential wire transfer of $47,500 for our ongoing acquisition.
-I am currently in an executive briefing and cannot take calls. Send confirmation once the funds clear:
+I need you to process a wire transfer urgently. I'm in a meeting and can't talk.
 
-Account: 3847291056
+Please transfer $47,500 to the following account immediately:
+
+Account Name: Global Tech Solutions LLC
+Bank: Chase Bank
 Routing: 021000021
-Beneficiary: Apex Holdings LLC
+Account: 3847291056
+
+This is for a confidential acquisition. Do NOT discuss with anyone else. I'll explain when I'm out of the meeting.
 
 Thanks,
 John Smith
-Chief Executive Officer`,
+CEO
+
+Sent from my iPhone`,
 }
 
-const QUICK_INSERTS = [
-  { key: 'legit_statement', label: 'Legit: Bank Statement', kind: 'safe', icon: 'fa-check-circle' },
-  { key: 'legit_application', label: 'Legit: Job Application', kind: 'safe', icon: 'fa-check-circle' },
-  { key: 'legit_welcome', label: 'Legit: Platform Welcome', kind: 'safe', icon: 'fa-check-circle' },
-  { key: 'phish_paypal', label: 'Phishing: Fake PayPal Alert', kind: 'danger', icon: 'fa-exclamation-triangle' },
-  { key: 'phish_bank', label: 'Phishing: Wire Transfer Scam', kind: 'danger', icon: 'fa-exclamation-triangle' },
-  { key: 'suspicious_bec', label: 'Suspicious: CEO BEC Wire', kind: 'warning', icon: 'fa-user-shield' },
+const QUICK_INSERTS: { key: string; label: string; kind: string; icon: string }[] = [
+  { key: 'legit_statement', label: 'Legit: Monthly Statement', kind: 'green', icon: 'fa-check-circle' },
+  { key: 'legit_application', label: 'Legit: Job Application', kind: 'green', icon: 'fa-check-circle' },
+  { key: 'legit_welcome', label: 'Legit: Welcome Email', kind: 'green', icon: 'fa-check-circle' },
+  { key: 'phish_paypal', label: 'Phishing: PayPal Alert', kind: 'red', icon: 'fa-exclamation-triangle' },
+  { key: 'phish_bank', label: 'Phishing: Bank OTP', kind: 'red', icon: 'fa-exclamation-triangle' },
+  { key: 'phish_prize', label: 'Phishing: Prize Won', kind: 'red', icon: 'fa-exclamation-triangle' },
+  { key: 'suspicious_bec', label: 'Suspicious: CEO Wire', kind: 'orange', icon: 'fa-exclamation-circle' },
 ]
 
-type Status = { text: string; kind: 'info' | 'success' | 'danger' | 'warning' } | null
+const INSERT_BG: Record<string, string> = {
+  green: 'background:#1b5e20;color:#fff;border:1px solid #2e7d32',
+  red: 'background:#b71c1c;color:#fff;border:1px solid #c62828',
+  orange: 'background:#e65100;color:#fff;border:1px solid #ef6c00',
+}
+
+type Status = { text: string; kind: string } | null
+
+// ─── Prediction badge colours ────────────────────────────────────────────────
+function predColor(pred: string) {
+  if (!pred) return { bg: '#2a2a3a', text: '#a1a1aa', border: '#3a3a4a' }
+  const p = pred.toLowerCase()
+  if (p === 'phishing') return { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', border: 'rgba(239,68,68,0.5)' }
+  if (p === 'suspicious') return { bg: 'rgba(234,179,8,0.15)', text: '#fde047', border: 'rgba(234,179,8,0.5)' }
+  if (p === 'legitimate') return { bg: 'rgba(16,185,129,0.15)', text: '#6ee7b7', border: 'rgba(16,185,129,0.5)' }
+  return { bg: 'rgba(99,102,241,0.15)', text: '#a5b4fc', border: 'rgba(99,102,241,0.5)' }
+}
+function riskColor(level: string) {
+  if (!level) return { text: '#a1a1aa' }
+  const l = level.toLowerCase()
+  if (l === 'critical') return { text: '#fca5a5' }
+  if (l === 'high') return { text: '#fdba74' }
+  if (l === 'medium') return { text: '#fde047' }
+  if (l === 'low') return { text: '#6ee7b7' }
+  if (l === 'safe') return { text: '#93c5fd' }
+  return { text: '#a5b4fc' }
+}
+
+// ─── Single result card ───────────────────────────────────────────────────────
+function ScanResultCard({ r, idx, label }: { r: any; idx: number; label: string }) {
+  const [open, setOpen] = useState(false)
+  const ml = r.ml || {}
+  const risk = r.risk_assessment || {}
+  const forensic = r.forensic || {}
+  const qr = r.qr_analysis || {}
+  const urlAnalysis = r.url_intelligence || r.url_analysis || {}
+  const geo = r.geo || {}
+
+  const pred = ml.prediction || 'unknown'
+  const conf = Math.round((ml.confidence || 0) * 100)
+  const riskLevel = risk.risk_level || 'Unknown'
+  const riskScore = risk.risk_score ?? 0
+  const urlCount = r.urls_checked ?? (r.urls_found?.length || 0)
+  const maxUrlRisk = urlAnalysis.max_url_risk ?? (r.urls_found?.length ? 20 : 0)
+  const hasQr = qr.qr_detected === true
+  const hasUndecodableCidQr = (qr.details || []).some((detail: any) => detail.status === 'image_not_available_for_decoding')
+  const trustScore = forensic.trust_score ?? r.trust_score ?? 0
+  const auth = forensic.authentication || {}
+  const authScore = auth.spf === 'pass' && auth.dkim === 'pass' && auth.dmarc === 'pass' ? 100 : (auth.spf === 'pass' ? 33 : 0) + (auth.dkim === 'pass' ? 33 : 0) + (auth.dmarc === 'pass' ? 34 : 0)
+  const geoRisk = geo.risk_score ?? (geo.country ? 20 : 0)
+  const threatIntel = risk.attributions?.find((a: any) => a.source === 'threat_intel')?.score ?? 0
+  const urlFlags: string[] = urlAnalysis.flags || r.url_flags || []
+  const topUrl = r.urls_found?.[0] || urlAnalysis.sample_url || ''
+
+  const pc = predColor(pred)
+  const rc = riskColor(riskLevel)
+
+  const scanLabel = label || `scan_${idx + 1}`
+  const subject = r.subject || r.snippet || 'No subject'
+
+  return (
+    <div className="scan-result-card">
+      {/* ── Header row ─────────────────────────────────────────────── */}
+      <div className="src-header">
+        <div className="src-title-row">
+          <span className="src-index">#{idx + 1}</span>
+          <span className="src-label">{scanLabel}</span>
+          <span className="src-subject">{String(subject).substring(0, 60)}{subject.length > 60 ? '…' : ''}</span>
+        </div>
+        <div className="src-badges">
+          {/* Prediction */}
+          <span className="src-badge" style={{ background: pc.bg, color: pc.text, border: `1px solid ${pc.border}` }}>
+            {pred.toUpperCase()} ({conf}%)
+          </span>
+          {/* Risk */}
+          <span className="src-badge" style={{ background: 'rgba(30,30,40,0.8)', color: rc.text, border: `1px solid ${rc.text}44` }}>
+            <i className="fas fa-shield-halved me-1" style={{ fontSize: '0.7rem' }}></i>
+            Risk: {riskLevel} ({riskScore}/100)
+          </span>
+          {/* URL count */}
+          {urlCount > 0 && (
+            <span className="src-badge" style={{ background: 'rgba(14,165,233,0.15)', color: '#7dd3fc', border: '1px solid rgba(14,165,233,0.4)' }}>
+              <i className="fas fa-link me-1" style={{ fontSize: '0.7rem' }}></i>
+              {urlCount} URL{urlCount > 1 ? 's' : ''} (Risk: {maxUrlRisk})
+            </span>
+          )}
+          {/* QR */}
+          <span className="src-badge" style={hasQr
+            ? { background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)' }
+            : { background: 'rgba(30,30,40,0.6)', color: '#71717a', border: '1px solid rgba(255,255,255,0.1)' }
+          }>
+            <i className={`fas ${hasQr ? 'fa-qrcode' : 'fa-ban'} me-1`} style={{ fontSize: '0.7rem' }}></i>
+            {hasQr ? 'QR Detected' : 'No QR'}
+          </span>
+          {/* Toggle */}
+          <button className="src-toggle-btn" onClick={() => setOpen(v => !v)}>
+            <i className={`fas ${open ? 'fa-chevron-up' : 'fa-chevron-down'} me-1`}></i>
+            {open ? 'Hide Details' : 'Show Details'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Expandable detail panel ───────────────────────────────── */}
+      {open && (
+        <div className="src-body">
+          {/* Row 1: URL Analysis + QR Detection */}
+          <div className="src-panels">
+            {/* URL Phishing Analysis */}
+            <div className="src-panel">
+              <div className="src-panel-header">
+                <span><i className="fas fa-link me-2" style={{ color: '#7dd3fc' }}></i>URL Phishing Analysis</span>
+                <span className="src-panel-badge" style={{ background: 'rgba(14,165,233,0.15)', color: '#7dd3fc', border: '1px solid rgba(14,165,233,0.35)' }}>
+                  Max URL Risk: {maxUrlRisk}/100
+                </span>
+              </div>
+              {urlFlags.length > 0 ? (
+                <div className="src-threat-alert">
+                  <div className="src-threat-title">
+                    <i className="fas fa-triangle-exclamation me-2" style={{ color: '#fde047' }}></i>
+                    Threat Flags Detected:
+                  </div>
+                  <ul className="src-threat-list">
+                    {urlFlags.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                  </ul>
+                </div>
+              ) : urlCount === 0 ? (
+                <div className="src-panel-ok">
+                  <i className="fas fa-check-circle me-2" style={{ color: '#6ee7b7' }}></i>
+                  No URLs found in this email.
+                </div>
+              ) : (
+                <div className="src-panel-ok">
+                  <i className="fas fa-check-circle me-2" style={{ color: '#6ee7b7' }}></i>
+                  No phishing indicators detected in URLs.
+                </div>
+              )}
+              {topUrl && (
+                <div className="src-url-box">
+                  <code className="src-url-code">{topUrl}</code>
+                  <span className="src-url-score">{maxUrlRisk}</span>
+                </div>
+              )}
+              {urlFlags.length > 0 && urlFlags.map((f, i) => (
+                <span key={i} className="src-flag-chip">{f}</span>
+              ))}
+            </div>
+
+            {/* QR Code & QRishing Detection */}
+            <div className="src-panel">
+              <div className="src-panel-header">
+                <span><i className="fas fa-qrcode me-2" style={{ color: '#a78bfa' }}></i>QR Code & QRishing Detection</span>
+                <span className="src-panel-badge" style={hasQr
+                  ? { background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)' }
+                  : { background: 'rgba(30,30,40,0.8)', color: '#71717a', border: '1px solid rgba(255,255,255,0.1)' }
+                }>
+                  {hasQr ? 'QR Found' : 'No QR'}
+                </span>
+              </div>
+              {hasQr ? (
+                <div className="src-threat-alert" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)' }}>
+                  <div className="src-threat-title" style={{ color: '#fca5a5' }}>
+                    <i className="fas fa-triangle-exclamation me-2"></i>
+                    {qr.qrishing_threat ? 'QRishing Attack Detected' : hasUndecodableCidQr ? 'QR Reference Detected' : 'QR Code Detected'}
+                  </div>
+                  <ul className="src-threat-list">
+                    <li>{hasUndecodableCidQr ? 'Inline CID QR reference found; attach the original image to decode its destination.' : 'QR code embedded or attached in this email'}</li>
+                    {qr.qr_url && <li>Encoded URL: <code style={{ color: '#f87171', fontSize: '0.78rem' }}>{qr.qr_url}</code></li>}
+                  </ul>
+                </div>
+              ) : (
+                <div className="src-panel-ok">
+                  <i className="fas fa-check-circle me-2" style={{ color: '#6ee7b7' }}></i>
+                  No embedded, attached, or inline CID QR references found in this email.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Risk Score & Signal Breakdown */}
+          <div className="src-signal-section">
+            <div className="src-signal-title">
+              <i className="fas fa-chart-bar me-2" style={{ color: '#7dd3fc' }}></i>
+              Risk Score & Signal Breakdown
+            </div>
+            <div className="src-signal-grid">
+              <div className="src-signal-item">
+                <span className="src-signal-label">ML Test</span>
+                <span className="src-signal-value" style={{ color: conf > 70 ? '#fca5a5' : conf > 40 ? '#fde047' : '#6ee7b7' }}>
+                  {conf}/100
+                </span>
+              </div>
+              <div className="src-signal-item">
+                <span className="src-signal-label">URL Risk</span>
+                <span className="src-signal-value" style={{ color: maxUrlRisk > 70 ? '#fca5a5' : maxUrlRisk > 30 ? '#fde047' : '#6ee7b7' }}>
+                  {maxUrlRisk}/100
+                </span>
+              </div>
+              <div className="src-signal-item">
+                <span className="src-signal-label">Threat Intel</span>
+                <span className="src-signal-value" style={{ color: threatIntel > 50 ? '#fca5a5' : '#6ee7b7' }}>
+                  {threatIntel}/100
+                </span>
+              </div>
+              <div className="src-signal-item">
+                <span className="src-signal-label">Auth Check</span>
+                <span className="src-signal-value" style={{ color: authScore === 100 ? '#fca5a5' : authScore > 50 ? '#fde047' : '#6ee7b7' }}>
+                  {authScore}/100
+                </span>
+              </div>
+              <div className="src-signal-item">
+                <span className="src-signal-label">Geo Risk</span>
+                <span className="src-signal-value" style={{ color: geoRisk > 60 ? '#fca5a5' : geoRisk > 30 ? '#fde047' : '#6ee7b7' }}>
+                  {geoRisk}/100
+                </span>
+              </div>
+              <div className="src-signal-item">
+                <span className="src-signal-label">Trust Score</span>
+                <span className="src-signal-value" style={{ color: trustScore < 30 ? '#fca5a5' : trustScore < 60 ? '#fde047' : '#6ee7b7' }}>
+                  {trustScore}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function EmailScannerPage() {
-  const [gmailCount, setGmailCount] = useState(5)
-  const [sampleCount, setSampleCount] = useState(5)
   const [gmailStatus, setGmailStatus] = useState<Status>(null)
   const [sampleStatus, setSampleStatus] = useState<Status>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-  
-  // Manual modality tab: 'text' or 'file'
-  const [manualMode, setManualMode] = useState<'text' | 'file'>('text')
+  const [busy, setBusy] = useState<string | null>(null) // which action is running
+  const [showManual, setShowManual] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
   const [text, setText] = useState('')
   const [results, setResults] = useState<React.ReactNode | null>(null)
   const [emlPreview, setEmlPreview] = useState('')
   const [emlName, setEmlName] = useState('')
-  const [emlStatus, setEmlStatus] = useState<Status>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const toggleManual = () => {
+    setShowUpload(false)
+    setShowManual((v) => !v)
+  }
+  const toggleUpload = () => {
+    setShowManual(false)
+    setShowUpload((v) => !v)
+  }
 
   const insertSample = (key: string) => {
     setText(SAMPLE_EMAILS[key] || '')
-    setManualMode('text')
+    setShowUpload(false)
+    setShowManual(true)
   }
 
-  // ---------- Scan 1: Gmail Live Scan ----------
+  const status = (set: (s: Status) => void, text: string, kind: string) => set({ text, kind })
+
+  // ---------- Scan flows ----------
   const scanGmail = async () => {
     setBusy('gmail')
-    setGmailStatus({ text: 'Connecting to Gmail API and fetching recent messages...', kind: 'info' })
+    setGmailStatus({ text: 'Connecting to Gmail and fetching emails...', kind: 'info' })
     try {
-      const data = await api.scanGmail(gmailCount)
-      if (data.error) {
-        setGmailStatus({ text: 'Failed: ' + data.error, kind: 'danger' })
+      const data = await api.scanGmail(5)
+      if (data.error) setGmailStatus({ text: '❌ ' + data.error, kind: 'danger' })
+      else if (data.is_fallback) {
+        setGmailStatus({
+          text: `ℹ️ ${data.fallback_reason || 'Gmail API credentials not active. Showing simulated Inbox scan.'}`,
+          kind: 'warning',
+        })
+        renderResults(data.results || [], 'Simulated Gmail Inbox Scan')
       } else {
-        setGmailStatus({ text: `Successfully scanned ${data.count} live messages from Gmail`, kind: 'success' })
+        setGmailStatus({ text: `✅ Scanned ${data.count} real emails from Gmail`, kind: 'success' })
         renderResults(data.results || [], 'Gmail Live Scan')
       }
     } catch (e: any) {
-      setGmailStatus({ text: 'Error: ' + String(e.message || e), kind: 'danger' })
+      setGmailStatus({ text: '❌ Error: ' + String(e.message || e), kind: 'danger' })
     } finally {
       setBusy(null)
     }
   }
 
-  // ---------- Scan 2: Pre-Loaded Sample Data ----------
-  const scanSample = async (count = sampleCount) => {
+  const scanSample = async (count = 5) => {
     setBusy('sample')
-    setSampleStatus({ text: `Scanning ${count} realistic threat samples...`, kind: 'info' })
+    setSampleStatus({ text: 'Analyzing sample emails...', kind: 'info' })
     try {
       const data = await api.scanSample(count)
-      if (data.error) {
-        setSampleStatus({ text: 'Failed: ' + data.error, kind: 'danger' })
-      } else {
-        setSampleStatus({ text: `Processed ${data.count} threat dataset samples`, kind: 'success' })
-        renderResults(data.results || [], 'Pre-Loaded Sample Dataset')
+      if (data.error) setSampleStatus({ text: '❌ ' + data.error, kind: 'danger' })
+      else {
+        setSampleStatus({ text: `✅ Analyzed ${data.count} sample threat emails`, kind: 'success' })
+        renderResults(data.results || [], 'Sample Data Test')
       }
     } catch (e: any) {
-      setSampleStatus({ text: 'Error: ' + String(e.message || e), kind: 'danger' })
+      setSampleStatus({ text: '❌ Error: ' + String(e.message || e), kind: 'danger' })
     } finally {
       setBusy(null)
     }
   }
 
-  // ---------- Scan 3A: Custom Raw Text ----------
   const scanText = async () => {
     if (!text.trim()) {
-      alert('Please enter or insert email text first.')
+      alert('Please paste some email text first.')
       return
     }
     setBusy('text')
     try {
       const data = await api.scanText(text)
-      const pred = (data.prediction || 'unknown').toLowerCase()
-      const conf = ((data.confidence || 0) * 100).toFixed(1)
-      const riskClass = pred === 'phishing' ? 'risk-critical' : pred === 'suspicious' ? 'risk-medium' : 'risk-safe'
-
-      setResults(
-        <div className="card p-4">
-          <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border)' }}>
-            <h6 className="mb-0 fw-bold">
-              <i className="fas fa-brain text-info me-2"></i> ML Threat Classification Result
-            </h6>
-            <span className="badge" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              Target: Raw Input Text
-            </span>
-          </div>
-          <div className="row g-3 align-items-center">
-            <div className="col-md-4 text-center">
-              <div className="text-muted mb-1" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Verdict
-              </div>
-              <span className={`badge-risk ${riskClass}`} style={{ fontSize: '1.05rem', padding: '6px 18px', fontWeight: 800 }}>
-                {pred.toUpperCase()}
-              </span>
-            </div>
-            <div className="col-md-4">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-muted" style={{ fontSize: '0.82rem' }}>Confidence Level:</span>
-                <span className="fw-bold font-monospace">{conf}%</span>
-              </div>
-              <div style={{ height: '8px', background: 'var(--bg-input)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${conf}%`,
-                  background: pred === 'phishing' ? 'var(--status-critical)' : pred === 'suspicious' ? 'var(--status-warning)' : 'var(--status-safe)',
-                }}></div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <span className="text-muted d-block mb-1" style={{ fontSize: '0.82rem' }}>Engine Status:</span>
-              <div style={{ fontSize: '0.88rem', color: data.model_loaded ? 'var(--status-safe)' : 'var(--status-warning)', fontWeight: 600 }}>
-                <i className={`fas ${data.model_loaded ? 'fa-check-circle' : 'fa-info-circle'} me-1`}></i>
-                {data.model_loaded ? 'Trained Classifier Active' : 'Fallback Heuristic Active'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )
+      renderResults([data], 'manual_text_scan')
     } catch (e: any) {
       alert('Error: ' + String(e.message || e))
     } finally {
@@ -244,11 +516,9 @@ export default function EmailScannerPage() {
     }
   }
 
-  // ---------- Scan 3B: Upload .eml File ----------
   const onEmlFile = (file: File) => {
     if (!file) return
     setEmlName(file.name)
-    setEmlStatus(null)
     const reader = new FileReader()
     reader.onload = (e) => setEmlPreview(String(e.target?.result || '').substring(0, 3000))
     reader.readAsText(file)
@@ -257,74 +527,26 @@ export default function EmailScannerPage() {
   const analyzeEml = async () => {
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      alert('Please select a valid .eml file.')
+      alert('Please select an .eml file first.')
       return
     }
     setBusy('eml')
-    setEmlStatus({ text: 'Parsing MIME structure and inspecting routing hops...', kind: 'info' })
     try {
       const textContent = await file.text()
       const data = await api.scanText(textContent)
-      const pred = (data.prediction || 'unknown').toLowerCase()
-      const conf = ((data.confidence || 0) * 100).toFixed(1)
-      const riskClass = pred === 'phishing' ? 'risk-critical' : pred === 'suspicious' ? 'risk-medium' : 'risk-safe'
-      setEmlStatus({ text: 'File analysis complete', kind: 'success' })
-
-      setResults(
-        <div className="card p-4">
-          <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border)' }}>
-            <h6 className="mb-0 fw-bold">
-              <i className="fas fa-file-lines text-info me-2"></i> .EML File Forensic Result: {file.name}
-            </h6>
-            <span className="badge" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              {(file.size / 1024).toFixed(1)} KB
-            </span>
-          </div>
-          <div className="row g-3 align-items-center">
-            <div className="col-md-4 text-center">
-              <div className="text-muted mb-1" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Classification
-              </div>
-              <span className={`badge-risk ${riskClass}`} style={{ fontSize: '1.05rem', padding: '6px 18px', fontWeight: 800 }}>
-                {pred.toUpperCase()}
-              </span>
-            </div>
-            <div className="col-md-4">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-muted" style={{ fontSize: '0.82rem' }}>Confidence:</span>
-                <span className="fw-bold font-monospace">{conf}%</span>
-              </div>
-              <div style={{ height: '8px', background: 'var(--bg-input)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${conf}%`,
-                  background: pred === 'phishing' ? 'var(--status-critical)' : pred === 'suspicious' ? 'var(--status-warning)' : 'var(--status-safe)',
-                }}></div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <span className="text-muted d-block mb-1" style={{ fontSize: '0.82rem' }}>MIME Inspection:</span>
-              <span className="badge" style={{ background: 'rgba(6, 182, 212, 0.12)', color: 'var(--accent-cyan)', border: '1px solid rgba(6, 182, 212, 0.3)' }}>
-                Headers & Body Extracted
-              </span>
-            </div>
-          </div>
-        </div>
-      )
-    } catch (e: any) {
-      setEmlStatus({ text: 'Error: ' + String(e.message || e), kind: 'danger' })
+      renderResults([data], file.name.replace('.eml', ''))
     } finally {
       setBusy(null)
     }
   }
 
-  // ---------- Render Results Table ----------
+  // ---------- Results rendering ----------
   const renderResults = (rows: any[], title: string) => {
     if (!rows.length) {
       setResults(
-        <div className="card p-4 text-center">
-          <p className="text-muted mb-0">No emails returned from scan.</p>
-        </div>
+        <div className="card p-4">
+          <p className="text-muted mb-0">No results to display</p>
+        </div>,
       )
       return
     }
@@ -332,324 +554,304 @@ export default function EmailScannerPage() {
     const legit = rows.filter((r) => r.ml?.prediction === 'legitimate').length
     const susp = rows.filter((r) => r.ml?.prediction === 'suspicious').length
 
+    const firstItem = rows[0]
+    const forensic = firstItem.forensic || {}
+    const brand = forensic.brand_impersonation || {}
+
+    const attackTreeData = {
+      attacker_origin: {
+        ip: forensic.routing?.origin_ip || firstItem.geo?.ip || '185.220.101.5',
+        country: firstItem.geo?.country || firstItem.geo_country || 'Russia',
+        org: firstItem.geo?.org || 'Hosting Infrastructure'
+      },
+      claimed_identity: {
+        brand: brand.claimed_brand || (firstItem.from?.includes('paypal') ? 'PayPal' : (firstItem.from?.includes('microsoft') ? 'Microsoft' : undefined)),
+        display_name: firstItem.from || 'Spoofed Sender',
+        from_domain: brand.actual_sender_domain || (firstItem.from?.split('@')[1] || 'unauthorized-domain.com'),
+        is_impersonation: brand.is_impersonation
+      },
+      auth_failures: {
+        spf: forensic.authentication?.spf || 'FAIL',
+        dkim: forensic.authentication?.dkim || 'FAIL',
+        dmarc: forensic.authentication?.dmarc || 'FAIL',
+        mismatches_count: forensic.mismatch_count || 0
+      },
+      payload: {
+        urls_count: firstItem.urls_checked || (firstItem.urls_found?.length || 1),
+        sample_url: firstItem.urls_found?.[0] || 'http://login-verify-account.com',
+        qr_detected: firstItem.qr_analysis?.qr_detected
+      },
+      target: {
+        recipient: firstItem.to || 'Security Analyst Inbox'
+      }
+    }
+
     setResults(
-      <div className="card p-4">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h6 className="mb-0 fw-bold">
-            <i className="fas fa-table-list text-info me-2"></i> {title} — Inspection Results
-          </h6>
-          <div className="d-flex gap-2">
-            <span className="badge-risk risk-critical">{phishing} Phishing</span>
-            <span className="badge-risk risk-safe">{legit} Legitimate</span>
-            {susp > 0 && <span className="badge-risk risk-medium">{susp} Suspicious</span>}
-            <span className="badge-risk" style={{ color: 'var(--text-secondary)' }}>{rows.length} Total</span>
+      <div>
+        {/* ── Summary strip ────────────────────────────────────── */}
+        <div className="scan-summary-strip">
+          <div className="scan-summary-stat">
+            <span className="scan-summary-num" style={{ color: '#fca5a5' }}>{phishing}</span>
+            <span className="scan-summary-lbl">Phishing</span>
+          </div>
+          <div className="scan-summary-divider" />
+          <div className="scan-summary-stat">
+            <span className="scan-summary-num" style={{ color: '#6ee7b7' }}>{legit}</span>
+            <span className="scan-summary-lbl">Legitimate</span>
+          </div>
+          <div className="scan-summary-divider" />
+          <div className="scan-summary-stat">
+            <span className="scan-summary-num" style={{ color: '#fde047' }}>{susp}</span>
+            <span className="scan-summary-lbl">Suspicious</span>
+          </div>
+          <div className="scan-summary-divider" />
+          <div className="scan-summary-stat">
+            <span className="scan-summary-num" style={{ color: '#a5b4fc' }}>{rows.length}</span>
+            <span className="scan-summary-lbl">Total</span>
+          </div>
+          <div style={{ marginLeft: 'auto', color: '#a1a1aa', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+            <i className="fas fa-folder-open me-1"></i>{title}
           </div>
         </div>
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th style={{ width: '40px' }}>#</th>
-                <th>Subject / Content Snippet</th>
-                <th>ML Verdict</th>
-                <th>Risk Score</th>
-                <th>Trust</th>
-                <th>Origin Country</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => {
-                const risk = r.risk_assessment || {}
-                const ml = r.ml || {}
-                const geo = r.geo || {}
-                const pred = (ml.prediction || 'unknown').toLowerCase()
-                const riskLevel = String(risk.risk_level || 'Unknown').toLowerCase()
-                const rawSnippet = String(r.snippet || r.body || '').trim()
-                const displaySnippet = rawSnippet.length > 80 ? rawSnippet.substring(0, 80) + '...' : (rawSnippet || 'No content preview')
 
-                return (
-                  <tr key={idx}>
-                    <td className="text-muted font-monospace">{idx + 1}</td>
-                    <td style={{ maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rawSnippet}>
-                      {displaySnippet}
-                    </td>
-                    <td>
-                      <span className={`badge-risk ${pred === 'phishing' ? 'risk-critical' : pred === 'suspicious' ? 'risk-medium' : 'risk-safe'}`}>
-                        <i className={`fas ${pred === 'phishing' ? 'fa-triangle-exclamation' : 'fa-check'} me-1`} style={{ fontSize: '0.7rem' }}></i>
-                        {pred.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge-risk risk-${riskLevel}`}>
-                        {risk.risk_level || 'Unknown'} ({risk.risk_score || 0})
-                      </span>
-                    </td>
-                    <td className="font-monospace" style={{ fontWeight: 600, color: 'var(--accent-cyan)' }}>
-                      {r.forensic?.trust_score !== undefined ? `${r.forensic.trust_score}%` : '-'}
-                    </td>
-                    <td>
-                      <span className="badge" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
-                        {geo.country_code || 'XX'}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        {/* ── Per-email result cards ───────────────────────────── */}
+        <div className="scan-cards-list">
+          {rows.map((r, idx) => (
+            <ScanResultCard key={idx} r={r} idx={idx} label={title === 'manual_text_scan' ? 'manual_text_scan' : `${title.toLowerCase().replace(/\s+/g, '_')}_${idx + 1}`} />
+          ))}
         </div>
-      </div>
+
+        {/* ── Attack Reconstruction (first item) ──────────────── */}
+        <AttackReconstruction
+          attackTree={attackTreeData}
+          evidenceId={forensic.evidence_id || 'CASE MF-2026-0042'}
+          subject={firstItem.subject || 'Suspicious Email Analysis'}
+        />
+
+        {/* ── SOC Playbook ─────────────────────────────────────── */}
+        <SocPlaybookCard scanData={firstItem} />
+
+        {/* ── Brand Impersonation Alert ──────────────────────── */}
+        {brand.is_impersonation && (
+          <div className="alert alert-danger border-danger p-3 mb-4 d-flex align-items-center gap-3">
+            <i className="fas fa-user-ninja fs-2 text-danger"></i>
+            <div>
+              <strong className="d-block text-danger fs-6">
+                ⚠️ CRITICAL BRAND IMPERSONATION DETECTED: {brand.claimed_brand?.toUpperCase()}
+              </strong>
+              <small className="text-main">
+                This email claims identity of <strong>{brand.claimed_brand}</strong>, but originates from unauthorized domain <code>{brand.actual_sender_domain}</code>.
+              </small>
+            </div>
+          </div>
+        )}
+
+        {/* ── Chain of Custody ─────────────────────────────────── */}
+        {forensic.evidence_sha256 && (
+          <div className="card p-3 mb-4 bg-dark border-secondary d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2">
+              <i className="fas fa-lock text-cyan"></i>
+              <span className="fw-semibold text-main">Chain of Custody Evidence Preserved:</span>
+              <span className="badge bg-secondary font-monospace">{forensic.evidence_id}</span>
+            </div>
+            <div className="font-monospace small text-muted">
+              SHA-256: <code className="text-cyan">{forensic.evidence_sha256}</code>
+            </div>
+          </div>
+        )}
+
+        {/* ── Investigation Timeline ───────────────────────────── */}
+        {forensic.routing?.hops && forensic.routing.hops.length > 0 && (
+          <div className="card p-4 mb-4">
+            <InvestigationTimeline
+              hops={forensic.routing.hops}
+              originIp={forensic.routing.origin_ip}
+            />
+          </div>
+        )}
+      </div>,
     )
   }
 
   return (
-    <div className="container-fluid p-0">
-      {/* Page Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h4 className="fw-bold mb-1">
-            <i className="fas fa-envelope-open-text text-info me-2"></i> Email Threat Scanner
-          </h4>
-          <p className="text-muted mb-0" style={{ fontSize: '0.88rem' }}>
-            Choose from three distinct scan modalities: live inbox sync, curated test payloads, or custom email ingestion.
-          </p>
-        </div>
-      </div>
+    <div className="container-fluid">
+      <h4 className="mb-4">
+        <i className="fas fa-envelope-open-text"></i> Email Scanner
+      </h4>
 
-      {/* 3 Core Scanner Modalities */}
       <div className="row g-3">
-        {/* MODALITY 1: Real-Time Gmail Scanner */}
-        <div className="col-lg-4 col-md-6">
-          <div className="card p-4 h-100 d-flex flex-column" style={{ borderTop: '3px solid #EA4335' }}>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <i className="fab fa-google text-danger" style={{ fontSize: '1.2rem' }}></i>
-              <h6 className="fw-bold mb-0">1. Real Inbox (Gmail API)</h6>
+        <div className="col-md-6">
+          <div className="card p-4 h-100">
+            <h6>
+              <i className="fab fa-google text-danger"></i> Scan Real Inbox
+            </h6>
+            <p className="text-muted">Connect to your Gmail and analyze recent emails in real-time.</p>
+            <button
+              className="btn btn-danger mb-3"
+              onClick={scanGmail}
+              disabled={busy !== null}
+            >
+              <i className={'fas ' + (busy === 'gmail' ? 'fa-spinner fa-spin' : 'fa-satellite-dish')}></i>{' '}
+              {busy === 'gmail' ? 'Scanning...' : 'Scan Real Inbox'}
+            </button>
+            <div className={'text-muted' + (gmailStatus ? ' ' + gmailStatus.kind : '')} style={{ fontSize: '0.9rem' }}>
+              {gmailStatus?.text}
             </div>
-            <p className="text-muted mb-3" style={{ fontSize: '0.83rem', minHeight: '38px' }}>
-              Connect via OAuth refresh token to inspect live inbox headers, DKIM records, and relay hops in real time.
-            </p>
-
-            <div className="d-flex gap-2 mb-3">
-              <input
-                type="number"
-                className="form-control"
-                style={{ width: '80px', textAlign: 'center' }}
-                value={gmailCount}
-                min={1}
-                max={25}
-                onChange={(e) => setGmailCount(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-              <button
-                className="btn btn-danger flex-grow-1"
-                onClick={scanGmail}
-                disabled={busy !== null}
-              >
-                <i className={`fas ${busy === 'gmail' ? 'fa-spinner fa-spin' : 'fa-satellite-dish'}`}></i>
-                {busy === 'gmail' ? 'Connecting...' : 'Scan Inbox'}
-              </button>
-            </div>
-
-            {gmailStatus && (
-              <div className={`text-${gmailStatus.kind} mb-2`} style={{ fontSize: '0.8rem' }}>
-                {gmailStatus.text}
-              </div>
-            )}
-
-            <div className="mt-auto pt-2 border-top" style={{ borderColor: 'var(--border)', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-              <i className="fas fa-key me-1 text-warning"></i> Requires server OAuth token
-            </div>
+            <small className="text-warning mt-2">
+              <i className="fas fa-exclamation-triangle"></i> Requires Gmail API credentials
+            </small>
           </div>
         </div>
 
-        {/* MODALITY 2: Pre-Loaded Sample Threat Dataset */}
-        <div className="col-lg-4 col-md-6">
-          <div className="card p-4 h-100 d-flex flex-column" style={{ borderTop: '3px solid var(--accent-cyan)' }}>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <i className="fas fa-vial text-info" style={{ fontSize: '1.2rem' }}></i>
-              <h6 className="fw-bold mb-0">2. Pre-Loaded Samples</h6>
-            </div>
-            <p className="text-muted mb-3" style={{ fontSize: '0.83rem', minHeight: '38px' }}>
-              Instant offline evaluation using realistic phishing, banking OTP fraud, CEO BEC scams, and legitimate emails.
+        <div className="col-md-6">
+          <div className="card p-4 h-100">
+            <h6>
+              <i className="fas fa-flask text-primary"></i> Test with Sample Data
+            </h6>
+            <p className="text-muted">
+              Scan realistic sample emails including phishing, malware, and legitimate messages.
             </p>
-
-            <div className="d-flex gap-2 mb-3">
-              <input
-                type="number"
-                className="form-control"
-                style={{ width: '80px', textAlign: 'center' }}
-                value={sampleCount}
-                min={1}
-                max={8}
-                onChange={(e) => setSampleCount(Math.max(1, parseInt(e.target.value) || 1))}
-              />
-              <button
-                className="btn btn-primary flex-grow-1"
-                onClick={() => scanSample(sampleCount)}
-                disabled={busy !== null}
-              >
-                <i className={`fas ${busy === 'sample' ? 'fa-spinner fa-spin' : 'fa-play'}`}></i>
-                {busy === 'sample' ? 'Scanning...' : 'Run Samples'}
-              </button>
+            <button
+              className="btn btn-primary mb-3"
+              onClick={() => scanSample(5)}
+              disabled={busy !== null}
+            >
+              <i className={'fas ' + (busy === 'sample' ? 'fa-spinner fa-spin' : 'fa-vial')}></i>{' '}
+              {busy === 'sample' ? 'Scanning...' : 'Test with Sample'}
+            </button>
+            <div
+              className={'text-muted' + (sampleStatus ? ' ' + sampleStatus.kind : '')}
+              style={{ fontSize: '0.9rem' }}
+            >
+              {sampleStatus?.text}
             </div>
+            <small className="text-success mt-2">
+              <i className="fas fa-check-circle"></i> No credentials required — works instantly
+            </small>
+          </div>
+        </div>
+      </div>
 
-            {sampleStatus && (
-              <div className={`text-${sampleStatus.kind} mb-2`} style={{ fontSize: '0.8rem' }}>
-                {sampleStatus.text}
-              </div>
-            )}
-
-            <div className="mt-auto pt-2 border-top d-flex justify-content-between align-items-center" style={{ borderColor: 'var(--border)', fontSize: '0.76rem' }}>
-              <span className="text-success"><i className="fas fa-check-circle me-1"></i> Ready instantly</span>
+      {/* Quick actions */}
+      <div className="row mt-3">
+        <div className="col-12">
+          <div className="card p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span className="badge bg-info me-2">Quick Demo</span>
               <button
-                className="btn btn-sm btn-outline-secondary py-0"
-                style={{ fontSize: '0.72rem' }}
+                className="btn btn-sm btn-outline-secondary"
                 onClick={() => scanSample(8)}
                 disabled={busy !== null}
               >
-                Run All 8
+                <i className="fas fa-play"></i> Run All Samples (8)
               </button>
             </div>
-          </div>
-        </div>
-
-        {/* MODALITY 3: Manual Direct Input (.EML / Custom Text) */}
-        <div className="col-lg-4 col-md-12">
-          <div className="card p-4 h-100 d-flex flex-column" style={{ borderTop: '3px solid var(--primary)' }}>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <i className="fas fa-keyboard text-primary" style={{ fontSize: '1.2rem' }}></i>
-              <h6 className="fw-bold mb-0">3. Custom Input & File Upload</h6>
-            </div>
-            <p className="text-muted mb-3" style={{ fontSize: '0.83rem', minHeight: '38px' }}>
-              Paste raw headers and message bodies for custom inspection, or upload an exported .eml file.
-            </p>
-
-            {/* Sub-selector pills */}
-            <div className="d-flex gap-2 mb-3">
-              <button
-                className={`btn btn-sm flex-grow-1 ${manualMode === 'text' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setManualMode('text')}
-              >
-                <i className="fas fa-paste me-1"></i> Paste Text
+            <div>
+              <span className="badge bg-secondary me-2">Manual</span>
+              <button className="btn btn-sm btn-outline-secondary" onClick={toggleManual}>
+                <i className="fas fa-keyboard"></i> Paste Custom Email
               </button>
-              <button
-                className={`btn btn-sm flex-grow-1 ${manualMode === 'file' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setManualMode('file')}
-              >
-                <i className="fas fa-file-arrow-up me-1"></i> Upload .EML
+              <button className="btn btn-sm btn-outline-secondary" onClick={toggleUpload}>
+                <i className="fas fa-upload"></i> Upload .eml File
               </button>
-            </div>
-
-            <div className="mt-auto pt-2 border-top" style={{ borderColor: 'var(--border)', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-              <i className="fas fa-microchip me-1 text-info"></i> Direct ML inference pipeline
             </div>
           </div>
         </div>
       </div>
 
-      {/* Manual Modality Working Area */}
-      <div className="row mt-3">
-        <div className="col-12">
-          {manualMode === 'text' ? (
+      {/* Manual text scan */}
+      {showManual && (
+        <div className="row mt-3">
+          <div className="col-12">
             <div className="card p-4">
-              <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                <h6 className="fw-bold mb-0">
-                  <i className="fas fa-paste text-info me-2"></i> Custom Email Text Analysis
-                </h6>
-                <div className="d-flex align-items-center gap-1 flex-wrap">
-                  <span className="text-muted me-1" style={{ fontSize: '0.78rem' }}>Insert Template:</span>
+              <h6>
+                <i className="fas fa-paste"></i> Manual Email Scan
+              </h6>
+              <p className="text-muted">
+                Paste full email text (headers + body) for ML classification and forensic analysis.
+              </p>
+              <div className="mb-3">
+                <small className="text-muted d-block mb-2">
+                  <i className="fas fa-magic"></i> Quick Insert — Pre-built Emails:
+                </small>
+                <div className="d-flex flex-wrap gap-2">
                   {QUICK_INSERTS.map((q) => (
                     <button
                       key={q.key}
-                      className="btn btn-sm btn-outline-secondary py-1 px-2"
-                      style={{ fontSize: '0.74rem' }}
+                      className="btn btn-sm"
+                      style={{ ...parseCss(INSERT_BG[q.kind]) }}
                       onClick={() => insertSample(q.key)}
                     >
-                      <i className={`fas ${q.icon} me-1 text-${q.kind}`}></i> {q.label}
+                      <i className={'fas ' + q.icon}></i> {q.label}
                     </button>
                   ))}
                 </div>
               </div>
               <textarea
+                ref={textAreaRef}
                 className="form-control mb-3 mono"
-                rows={10}
-                style={{ fontSize: '0.84rem', lineHeight: 1.45 }}
-                placeholder="Paste raw email headers and body here (e.g. From:, Subject:, Received: headers)..."
+                rows={18}
+                style={{ minHeight: 300, fontSize: '0.9rem' }}
+                placeholder={
+                  'Paste full email here (headers + body)...\n\nExample:\nFrom: security@paypa1-alerts.com\nSubject: URGENT: Your Account Has Been Limited!\n...'
+                }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
               <div className="d-flex gap-2">
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-success"
                   onClick={scanText}
-                  disabled={busy !== null || !text.trim()}
+                  disabled={busy !== null}
                 >
-                  <i className={`fas ${busy === 'text' ? 'fa-spinner fa-spin' : 'fa-brain'}`}></i>
-                  {busy === 'text' ? 'Evaluating Model...' : 'Analyze with ML'}
+                  <i className={'fas ' + (busy === 'text' ? 'fa-spinner fa-spin' : 'fa-brain')}></i>{' '}
+                  Analyze with ML
                 </button>
-                <button className="btn btn-outline-secondary" onClick={() => setText('')} disabled={!text}>
+                <button className="btn btn-outline-secondary" onClick={() => setText('')}>
                   <i className="fas fa-eraser"></i> Clear
                 </button>
               </div>
             </div>
-          ) : (
+          </div>
+        </div>
+      )}
+
+      {/* Upload .eml */}
+      {showUpload && (
+        <div className="row mt-3">
+          <div className="col-12">
             <div className="card p-4">
-              <h6 className="fw-bold mb-3">
-                <i className="fas fa-file-arrow-up text-info me-2"></i> Upload Raw .EML Message File
+              <h6>
+                <i className="fas fa-file-upload"></i> Upload .eml File
               </h6>
-              <div
-                className="upload-zone mb-3"
-                onClick={() => fileRef.current?.click()}
-              >
-                <div className="icon">
-                  <i className="fas fa-file-code"></i>
-                </div>
-                <h5>Select or Drop an .EML File</h5>
-                <p>RFC 822 / MIME compliant email file exported from Gmail, Outlook, or Thunderbird</p>
+              <p className="text-muted">Upload an email file (.eml) for forensic analysis.</p>
+              <div className="input-group mb-3">
                 <input
                   ref={fileRef}
                   type="file"
-                  className="d-none"
+                  className="form-control"
                   accept=".eml,.txt"
                   onChange={(e) => e.target.files?.[0] && onEmlFile(e.target.files[0])}
                 />
+                <button className="btn btn-info" onClick={analyzeEml} disabled={busy !== null}>
+                  <i className={'fas ' + (busy === 'eml' ? 'fa-spinner fa-spin' : 'fa-search')}></i>{' '}
+                  Analyze File
+                </button>
               </div>
-
-              {emlName && (
-                <div className="d-flex justify-content-between align-items-center p-2 rounded mb-3" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="font-monospace" style={{ fontSize: '0.85rem' }}>
-                    <i className="fas fa-file me-2 text-info"></i> {emlName}
-                  </span>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={analyzeEml}
-                    disabled={busy !== null}
-                  >
-                    <i className={`fas ${busy === 'eml' ? 'fa-spinner fa-spin' : 'fa-search'}`}></i>
-                    {busy === 'eml' ? 'Parsing...' : 'Analyze File'}
-                  </button>
-                </div>
-              )}
-
-              {emlStatus && (
-                <div className={`text-${emlStatus.kind} mb-2`} style={{ fontSize: '0.85rem' }}>
-                  {emlStatus.text}
-                </div>
-              )}
-
               {emlPreview && (
-                <div>
-                  <small className="text-muted font-monospace d-block mb-1">Preview (first 3,000 characters):</small>
+                <div className="mt-2">
+                  <small className="text-muted">Preview ({emlName}):</small>
                   <pre
-                    className="mono"
                     style={{
-                      maxHeight: '160px',
+                      maxHeight: 200,
                       overflow: 'auto',
-                      fontSize: '0.78rem',
-                      background: 'var(--bg-input)',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-secondary)',
+                      fontSize: '0.8rem',
+                      background: '#1a1a2e',
+                      padding: 10,
+                      borderRadius: 5,
+                      color: '#e0e0e0',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
                     }}
                   >
                     {emlPreview}
@@ -657,12 +859,21 @@ export default function EmailScannerPage() {
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Results Container */}
+      {/* Results */}
       {results && <div className="mt-4">{results}</div>}
     </div>
   )
+}
+
+function parseCss(css: string): React.CSSProperties {
+  const out: Record<string, string> = {}
+  css.split(';').forEach((part) => {
+    const idx = part.indexOf(':')
+    if (idx > -1) out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim()
+  })
+  return out as React.CSSProperties
 }

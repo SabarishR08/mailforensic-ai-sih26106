@@ -162,6 +162,11 @@ class QREmailAnalyzer:
     """Extract and decode QR codes from email contents and attachments"""
 
     DATA_URI_PATTERN = re.compile(r'data:image/[a-zA-Z]+;base64,([A-Za-z0-9+/=\s]+)', re.IGNORECASE)
+    # A pasted email may retain an inline Content-ID reference while omitting
+    # the MIME image part itself.  We cannot decode pixels in that case, but
+    # it must not be reported as "No QR" to an analyst.
+    CID_IMAGE_PATTERN = re.compile(r'<img\b[^>]*\bsrc\s*=\s*["\']?cid:[^\s"\'>]+[^>]*>', re.IGNORECASE)
+    QR_REFERENCE_PATTERN = re.compile(r'\b(?:qr\s*code|qrcode|scan\s+(?:the\s+)?qr|cid:[^\s"\'>]*qr)', re.IGNORECASE)
 
     @classmethod
     def decode_qr_image(cls, image_bytes: bytes) -> List[str]:
@@ -241,6 +246,17 @@ class QREmailAnalyzer:
             except Exception as e:
                 logger.debug(f"Failed to decode base64 data URI image: {e}")
 
+        # 1b. Inline CID images whose MIME content was not supplied. This is
+        # common when users paste rendered email HTML into the text scanner.
+        # Record the QR reference, but do not invent a decoded payload.
+        cid_images = cls.CID_IMAGE_PATTERN.findall(body_text)
+        if cid_images and cls.QR_REFERENCE_PATTERN.search(body_text):
+            qr_details.append({
+                'source': 'inline_cid_reference',
+                'payload': '',
+                'status': 'image_not_available_for_decoding',
+            })
+
         # 2. Attachments
         attachments = email_data.get('attachments', [])
         for att in attachments:
@@ -274,11 +290,12 @@ class QREmailAnalyzer:
         qr_urls = list(dict.fromkeys(qr_urls))
         all_payloads = list(dict.fromkeys(all_payloads))
 
+        qr_reference_count = sum(1 for detail in qr_details if detail.get('source') == 'inline_cid_reference')
         qrishing_threat = len(qr_urls) > 0
 
         return {
-            'qr_detected': len(all_payloads) > 0,
-            'qr_count': len(all_payloads),
+            'qr_detected': len(all_payloads) > 0 or qr_reference_count > 0,
+            'qr_count': len(all_payloads) + qr_reference_count,
             'payloads': all_payloads,
             'urls_found': qr_urls,
             'qrishing_threat': qrishing_threat,

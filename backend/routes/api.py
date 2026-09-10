@@ -490,3 +490,169 @@ def threat_map_recent():
             pass
 
     return jsonify({'recent': recent, 'count': len(recent)})
+
+
+# ---------------------------------------------------------------------------
+# Batch Email Scanner & Remediation Playbook APIs
+# ---------------------------------------------------------------------------
+
+@api_bp.route('/batch-scan', methods=['POST'])
+def batch_scan():
+    """
+    Scan multiple emails in a single request.
+    Accepts JSON: { "emails": [ { "headers": "...", "body": "...", "subject": "..." }, ... ] }
+    """
+    import asyncio
+    from backend.services.email_scanner import scan_emails
+
+    data = request.get_json(silent=True) or {}
+    raw_emails = data.get('emails', [])
+    if not raw_emails or not isinstance(raw_emails, list):
+        return jsonify({'error': 'Invalid request format. Expected JSON with "emails" array.'}), 400
+
+    if len(raw_emails) > 20:
+        raw_emails = raw_emails[:20]
+
+    prepared_emails = []
+    for i, item in enumerate(raw_emails):
+        if isinstance(item, str):
+            prepared_emails.append({'headers': '', 'body': item, 'id': f'batch-{i+1}'})
+        elif isinstance(item, dict):
+            headers = item.get('headers', '')
+            body = item.get('body', item.get('content', ''))
+            subject = item.get('subject', '')
+            if subject and 'Subject:' not in headers:
+                headers = f"Subject: {subject}\n" + headers
+            prepared_emails.append({
+                'headers': headers,
+                'body': body,
+                'id': item.get('id', f'batch-{i+1}'),
+                'subject': subject
+            })
+
+    loop = asyncio.new_event_loop()
+    results = loop.run_until_complete(scan_emails(prepared_emails, limit=len(prepared_emails)))
+    loop.close()
+
+    total = len(results)
+    phishing_count = sum(1 for r in results if r.get('ml', {}).get('prediction') == 'phishing')
+    legitimate_count = total - phishing_count
+    scores = [r.get('risk_assessment', {}).get('risk_score', 0) for r in results]
+    avg_risk = round(sum(scores) / max(total, 1), 1)
+
+    return jsonify({
+        'total': total,
+        'phishing_count': phishing_count,
+        'legitimate_count': legitimate_count,
+        'avg_risk_score': avg_risk,
+        'results': results
+    })
+
+
+@api_bp.route('/remediation-playbook', methods=['POST'])
+def remediation_playbook():
+    """
+    Generate SOC Incident Remediation Playbook for a scan result.
+    Accepts JSON scan result object.
+    """
+    from backend.services.forensic_analyzer import ForensicAnalyzer
+
+    scan_data = request.get_json(silent=True) or {}
+    analyzer = ForensicAnalyzer()
+    playbook = analyzer.generate_remediation_playbook(scan_data)
+    return jsonify(playbook)
+
+
+@api_bp.route('/campaigns')
+def get_campaigns():
+    """
+    Aggregates threat scans into Threat Campaigns with MITRE ATT&CK Mapping.
+    """
+    scans = EmailScanResult.query.order_by(EmailScanResult.timestamp.desc()).all()
+
+    domain_clusters = defaultdict(list)
+    for s in scans:
+        sender_domain = 'unknown'
+        if s.full_result:
+            try:
+                full = json.loads(s.full_result)
+                sender = full.get('from', '')
+                if '@' in sender:
+                    sender_domain = sender.split('@')[-1].lower()
+            except Exception:
+                pass
+
+        if not sender_domain or sender_domain == 'unknown':
+            sender_domain = (s.geo_country or 'global-threat') + '-campaign'
+
+        domain_clusters[sender_domain].append(s)
+
+    campaigns = []
+    idx = 1
+    for domain, group in domain_clusters.items():
+        if len(group) == 0:
+            continue
+        phish_count = sum(1 for item in group if item.ml_prediction == 'phishing')
+        avg_score = round(sum((item.risk_score or 0) for item in group) / len(group), 1)
+
+        mitre_mapping = [
+            {'id': 'T1566.002', 'name': 'Spearphishing Link', 'tactic': 'Initial Access'},
+            {'id': 'T1583.001', 'name': 'Acquire Domains', 'tactic': 'Resource Development'},
+            {'id': 'T1598.003', 'name': 'Spearphishing Service', 'tactic': 'Reconnaissance'},
+        ]
+
+        campaigns.append({
+            'campaign_id': f'CMP-2026-{idx:03d}',
+            'name': f'Operation {domain.replace(".", "_").upper()} Threat Infrastructure',
+            'sender_domain': domain,
+            'origin_country': group[0].geo_country or 'Unknown',
+            'email_count': len(group),
+            'phishing_count': phish_count,
+            'avg_risk_score': avg_score,
+            'risk_level': 'Critical' if avg_score >= 70 else ('High' if avg_score >= 50 else 'Medium'),
+            'mitre_attack': mitre_mapping,
+            'last_active': group[0].timestamp.isoformat() if group[0].timestamp else '',
+        })
+        idx += 1
+
+    return jsonify({'campaigns': campaigns, 'total_campaigns': len(campaigns)})
+
+
+@api_bp.route('/campaigns/search')
+def ioc_search():
+    """Global IOC search across all email scans, IPs, domains, and subjects."""
+    q = request.args.get('q', '').strip().lower()
+    if not q:
+        return jsonify({'results': [], 'count': 0})
+
+    scans = EmailScanResult.query.all()
+    matches = []
+
+    for s in scans:
+        full = json.loads(s.full_result) if s.full_result else {}
+        sender = full.get('from', '').lower()
+        subject = full.get('subject', '').lower()
+        ip = (s.geo_country or '') + (full.get('geo', {}).get('ip', ''))
+
+        if q in sender or q in subject or q in ip.lower() or q in (s.email_id or '').lower():
+            matches.append({
+                'email_id': s.email_id,
+                'subject': full.get('subject', ''),
+                'from': full.get('from', ''),
+                'risk_score': s.risk_score,
+                'risk_level': s.risk_level,
+                'ml_prediction': s.ml_prediction,
+                'timestamp': s.timestamp.isoformat() if s.timestamp else '',
+            })
+
+    return jsonify({'results': matches, 'count': len(matches), 'query': q})
+
+
+@api_bp.route('/soc/playbook', methods=['POST'])
+def get_soc_playbook():
+    """Generate YARA rules, SIGMA rules, STIX 2.1 bundles, and containment playbooks."""
+    from backend.services.soc_playbook import generate_soc_playbook
+    data = request.json or {}
+    playbook = generate_soc_playbook(data)
+    return jsonify(playbook)
+

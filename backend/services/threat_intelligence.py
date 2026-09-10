@@ -82,9 +82,17 @@ async def check_abuseipdb(ip: str) -> Dict:
         return {'source': 'abuseipdb', 'status': 'error', 'error': str(e), 'is_abusive': False}
 
 
+_RDAP_CACHE: Dict[str, Dict] = {}
+_URL_CHECK_CACHE: Dict[str, Dict] = {}
+
+
 async def check_rdap(domain: str) -> Dict:
+    if not domain:
+        return {'source': 'rdap', 'status': 'no_domain'}
+    if domain in _RDAP_CACHE:
+        return dict(_RDAP_CACHE[domain])
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=2.5) as client:
             resp = await client.get(f'https://rdap.org/domain/{domain}')
             if resp.status_code == 200:
                 data = resp.json()
@@ -95,16 +103,21 @@ async def check_rdap(domain: str) -> Dict:
                         creation_date = event.get('eventDate')
                         break
                 nameservers = [ns.get('ldhName', '') for ns in data.get('nameservers', [])]
-                return {'source': 'rdap', 'status': 'success', 'domain': domain,
-                        'creation_date': creation_date, 'nameservers': nameservers,
-                        'status': data.get('status', [])}
+                res = {'source': 'rdap', 'status': 'success', 'domain': domain,
+                       'creation_date': creation_date, 'nameservers': nameservers,
+                       'status': data.get('status', [])}
+                _RDAP_CACHE[domain] = res
+                return dict(res)
             return {'source': 'rdap', 'status': 'error'}
     except Exception as e:
         return {'source': 'rdap', 'status': 'error', 'error': str(e)}
 
 
 async def unified_url_check(url: str) -> Dict:
-    """Check URL across all intelligence sources concurrently"""
+    """Check URL across all intelligence sources concurrently with caching"""
+    if url in _URL_CHECK_CACHE:
+        return dict(_URL_CHECK_CACHE[url])
+
     from urllib.parse import urlparse
     domain = urlparse(url).netloc
 
@@ -128,7 +141,7 @@ async def unified_url_check(url: str) -> Dict:
         threat_score += 30
         detections.append({'source': 'SafeBrowsing', 'status': 'UNSAFE', 'detail': sb.get('threat_type', '')})
 
-    return {
+    res = {
         'url': url,
         'threat_score': min(100, threat_score),
         'threat_level': 'Critical' if threat_score >= 70 else 'High' if threat_score >= 40 else 'Medium' if threat_score >= 20 else 'Low',
@@ -136,3 +149,5 @@ async def unified_url_check(url: str) -> Dict:
         'detections': detections,
         'sources': {'virustotal': vt, 'safebrowsing': sb, 'rdap': rdap},
     }
+    _URL_CHECK_CACHE[url] = res
+    return dict(res)

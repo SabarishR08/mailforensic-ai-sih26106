@@ -56,6 +56,13 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("PRAGMA journal_mode=WAL;"))
+            db.session.execute(text("PRAGMA synchronous=NORMAL;"))
+            db.session.commit()
+        except Exception:
+            pass
 
     return app
 

@@ -2,15 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import L from 'leaflet'
 import { api, ScanRow } from '../lib/api'
-import { fmtClock, riskClass } from '../lib/format'
+import { fmtClock, predBadgeBg, riskBadgeBg, riskClass } from '../lib/format'
 
 type Stats = { total_scans: number; phishing_detected: number; total_threats: number }
 
 const GEO_COLOR: Record<string, string> = {
-  Critical: '#EF4444',
-  High: '#F97316',
-  Medium: '#F59E0B',
-  Low: '#10B981',
+  Critical: '#d32f2f',
+  High: '#f57c00',
 }
 
 export default function DashboardPage() {
@@ -22,6 +20,7 @@ export default function DashboardPage() {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<L.CircleMarker[]>([])
 
+  // Load stats + scans + health once
   useEffect(() => {
     api
       .stats()
@@ -41,15 +40,15 @@ export default function DashboardPage() {
       .catch(() => setGeoPoints([]))
   }, [])
 
-  // Mini geo map
+  // Mini geo map — init once, then render circles as points arrive
   useEffect(() => {
     if (mapRef.current) return
     const el = document.getElementById('geo-map')
     if (!el) return
-    const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([20, 0], 2)
-    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; CartoDB',
+    const map = L.map(el).setView([20, 0], 2)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
     }).addTo(map)
     mapRef.current = map
     return () => {
@@ -65,16 +64,15 @@ export default function DashboardPage() {
     markersRef.current.forEach((m) => map.removeLayer(m))
     markersRef.current = []
     geoPoints.forEach((p) => {
-      const color = GEO_COLOR[p.risk_level] || '#06B6D4'
+      const color = GEO_COLOR[p.risk_level] || '#fbc02d'
       const marker = L.circleMarker([p.lat, p.lon], {
-        radius: 5,
-        color: color,
+        radius: 6,
+        color,
         fillColor: color,
-        fillOpacity: 0.8,
-        weight: 1,
+        fillOpacity: 0.7,
       })
         .bindPopup(
-          `<b>${p.city || 'Unknown'}, ${p.country || ''}</b><br><span style="color:#94a3b8">Risk: ${p.risk_level} (${p.risk_score})</span>`,
+          `<b>${p.city || ''}, ${p.country || ''}</b><br>Risk: ${p.risk_level} (${p.risk_score})`,
         )
         .addTo(map)
       markersRef.current.push(marker)
@@ -82,151 +80,133 @@ export default function DashboardPage() {
   }, [geoPoints])
 
   return (
-    <div className="container-fluid p-0">
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h4 className="fw-bold mb-1">
-            <i className="fas fa-chart-line text-info me-2"></i> Executive Threat Dashboard
-          </h4>
-          <p className="text-muted mb-0" style={{ fontSize: '0.88rem' }}>
-            Real-time telemetry, machine learning verification rates, and geolocated attack origins.
-          </p>
+    <div className="container-fluid">
+      {/* 🚀 Hero Banner Section (Obsidian AI Forensics Platform v2.0) */}
+      <div className="command-hero mb-4 position-relative overflow-hidden">
+        <div className="hero-orb hero-orb--one"></div><div className="hero-orb hero-orb--two"></div>
+        <div className="d-flex justify-content-center mb-3">
+          <div
+            className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill border border-secondary bg-dark text-light font-monospace"
+            style={{ fontSize: '0.82rem' }}
+          >
+            <span className="hero-live-dot"></span>
+            <i className="fas fa-shield-alt me-1"></i> INTELLIGENCE CONSOLE · v2.0
+          </div>
         </div>
-        <div className="d-flex gap-2">
-          <Link to="/email/scan" className="btn btn-primary btn-sm">
-            <i className="fas fa-satellite-dish"></i> Run Scan
+        <h1 className="fw-extrabold text-light display-5 mb-3" style={{ letterSpacing: '-0.02em' }}>
+          Your inbox, under <br />
+          <span
+            style={{
+              backgroundImage: 'linear-gradient(90deg, #60a5fa, #c084fc, #38bdf8)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            active protection
+          </span>
+        </h1>
+        <p className="text-muted fs-5 mx-auto mb-4" style={{ maxWidth: '720px', lineHeight: '1.6' }}>
+          A forensic workspace for detecting phishing, tracing suspicious routing, and preserving the evidence trail.
+        </p>
+        <div className="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+          <Link to="/email/scan" className="btn btn-primary btn-lg font-monospace fw-semibold px-4 py-2">
+            <i className="fas fa-radar me-2"></i> Start a scan
           </Link>
-          <Link to="/threat-map" className="btn btn-outline-secondary btn-sm">
-            <i className="fas fa-globe"></i> Threat Map
+          <Link to="/forensic/scan" className="btn btn-outline-light btn-lg font-monospace fw-semibold px-4 py-2">
+            <i className="fas fa-microscope me-2"></i> Forensic Analysis
+          </Link>
+          <Link to="/threat-map" className="btn btn-outline-secondary btn-lg font-monospace px-4 py-2">
+            <i className="fas fa-globe me-2"></i> Live threat map
           </Link>
         </div>
+        <div className="hero-readout"><span>LIVE ANALYSIS</span><strong>EMAIL · URL · HEADER</strong><span>FORENSIC-GRADE SIGNALS</span></div>
       </div>
 
+      <div className="section-heading mb-4"><div><span>OVERVIEW</span><h4><i className="fas fa-chart-line"></i> Threat activity</h4></div><small>Last updated in real time</small></div>
+
       {error && (
-        <div className="alert alert-danger py-2 mb-3" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#F87171' }}>
-          <i className="fas fa-exclamation-triangle me-2"></i> {error}
+        <div className="alert alert-danger py-2">
+          <i className="fas fa-exclamation-triangle"></i> {error}
         </div>
       )}
 
-      {/* 4 Stat Cards */}
-      <div className="row g-3 mb-4">
+      <div className="row mb-4 g-3">
         <div className="col-md-3">
-          <div className="stat-card">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="label">Total Scanned</span>
-              <i className="fas fa-inbox text-muted"></i>
-            </div>
+          <div className="card stat-card h-100">
             <div className="number">{stats?.total_scans ?? '—'}</div>
+            <div className="label">Total Emails Scanned</div>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="stat-card danger">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="label">Phishing Intercepted</span>
-              <i className="fas fa-shield-virus text-danger"></i>
-            </div>
+          <div className="card stat-card h-100">
             <div className="number text-danger">{stats?.phishing_detected ?? '—'}</div>
+            <div className="label">Phishing Detected</div>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="stat-card warning">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="label">High / Critical Threats</span>
-              <i className="fas fa-triangle-exclamation text-warning"></i>
-            </div>
+          <div className="card stat-card h-100">
             <div className="number text-warning">{stats?.total_threats ?? '—'}</div>
+            <div className="label">High/Critical Threats</div>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="stat-card safe">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="label">ML Model Status</span>
-              <i className="fas fa-microchip text-success"></i>
+          <div className="card stat-card h-100">
+            <div className={'number ' + (mlOnline === true ? 'text-success' : mlOnline === false ? 'text-danger' : '')}>
+              {mlOnline === true ? '✓ Online' : mlOnline === false ? '✗ Offline' : '—'}
             </div>
-            <div className="number text-success" style={{ fontSize: '1.4rem', paddingTop: '10px' }}>
-              {mlOnline === true ? (
-                <span><i className="fas fa-circle-check me-2"></i>Online</span>
-              ) : mlOnline === false ? (
-                <span className="text-danger"><i className="fas fa-circle-xmark me-2"></i>Offline</span>
-              ) : (
-                <span className="text-muted">—</span>
-              )}
-            </div>
+            <div className="label">ML Model Status</div>
           </div>
         </div>
       </div>
 
-      {/* Main Table + Threat Map */}
       <div className="row g-3">
-        {/* Recent Scans Table */}
-        <div className="col-lg-8 col-md-12">
-          <div className="card p-4 h-100">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h6 className="fw-bold mb-0">
-                <i className="fas fa-list text-info me-2"></i> Recent Email Scans
-              </h6>
-              <Link to="/email/scan" className="text-muted text-decoration-none" style={{ fontSize: '0.8rem' }}>
-                View All <i className="fas fa-chevron-right ms-1"></i>
-              </Link>
-            </div>
+        <div className="col-md-8">
+          <div className="card p-4">
+            <h6>
+              <i className="fas fa-list"></i> Recent Email Scans
+            </h6>
             <div className="table-responsive">
-              <table className="table table-hover align-middle">
+              <table className="table table-sm mt-3">
                 <thead>
                   <tr>
                     <th>Time</th>
-                    <th>Email Target</th>
-                    <th>ML Verdict</th>
-                    <th>Risk Score</th>
+                    <th>Email</th>
+                    <th>ML Prediction</th>
+                    <th>Risk</th>
                     <th>Trust</th>
-                    <th>Origin</th>
-                    <th className="text-end">Action</th>
+                    <th>Geo</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {scans.map((s) => {
-                    const isPhishing = s.ml_prediction === 'phishing'
-                    const isSuspicious = s.ml_prediction === 'suspicious'
-                    return (
-                      <tr key={s.id}>
-                        <td className="text-muted font-monospace" style={{ fontSize: '0.8rem' }}>
-                          {fmtClock(s.timestamp) || '-'}
-                        </td>
-                        <td className="fw-medium font-monospace" style={{ fontSize: '0.82rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.email_id}>
-                          {s.email_id || '-'}
-                        </td>
-                        <td>
-                          <span className={`badge-risk ${isPhishing ? 'risk-critical' : isSuspicious ? 'risk-medium' : 'risk-safe'}`}>
-                            <i className={`fas ${isPhishing ? 'fa-triangle-exclamation' : 'fa-check'} me-1`}></i>
-                            {s.ml_prediction}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge-risk ${riskClass(s.risk_level)}`}>
-                            {s.risk_level} ({s.risk_score})
-                          </span>
-                        </td>
-                        <td className="font-monospace fw-semibold" style={{ color: 'var(--accent-cyan)' }}>
-                          {s.forensic_trust_score ?? 0}/100
-                        </td>
-                        <td>
-                          <span className="badge" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontFamily: 'JetBrains Mono' }}>
-                            {s.geo_country || '-'}
-                          </span>
-                        </td>
-                        <td className="text-end">
-                          <Link to={`/forensic/report/${s.id}`} className="btn btn-sm btn-outline-secondary py-1 px-2" title="Inspect Forensic Details">
-                            <i className="fas fa-magnifying-glass"></i>
-                          </Link>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {scans.map((s) => (
+                    <tr key={s.id}>
+                      <td className="text-muted" style={{ fontSize: '0.8rem' }}>
+                        {fmtClock(s.timestamp) || '-'}
+                      </td>
+                      <td style={{ wordBreak: 'break-all' }}>{String(s.email_id || '').slice(0, 40)}</td>
+                      <td>
+                        <span className={'badge bg-' + predBadgeBg(s.ml_prediction)}>{s.ml_prediction}</span>
+                      </td>
+                      <td>
+                        <span className={'badge-risk ' + riskClass(s.risk_level)}>
+                          {s.risk_level} ({s.risk_score})
+                        </span>
+                      </td>
+                      <td>{s.forensic_trust_score ?? 0}/100</td>
+                      <td>{s.geo_country || '-'}</td>
+                      <td>
+                        <Link to={`/forensic/report/${s.id}`} className="btn btn-sm btn-outline-primary">
+                          <i className="fas fa-search"></i>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
                   {scans.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center text-muted py-5">
-                        <i className="fas fa-inbox d-block mb-2" style={{ fontSize: '1.8rem', color: 'var(--text-muted)' }}></i>
-                        No scans available yet. Go to <Link to="/email/scan">Email Scanner</Link> to run tests.
+                      <td colSpan={7} className="text-center text-muted py-4">
+                        No scans yet. Go to{' '}
+                        <Link to="/email/scan">Email Scanner</Link> to begin.
                       </td>
                     </tr>
                   )}
@@ -236,43 +216,31 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sidebar Mini-Map & Quick Launch */}
-        <div className="col-lg-4 col-md-12">
+        <div className="col-md-4">
           <div className="card p-4 mb-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="fw-bold mb-0">
-                <i className="fas fa-globe text-info me-2"></i> Threat Origin Map
-              </h6>
-              <span className="badge" style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                CartoDB Dark
-              </span>
-            </div>
+            <h6>
+              <i className="fas fa-globe"></i> Threat Origins
+            </h6>
             <div
               id="geo-map"
-              style={{ height: 240, borderRadius: 8, marginTop: 8, border: '1px solid var(--border)', background: 'var(--bg-canvas)', overflow: 'hidden' }}
+              style={{ height: 250, borderRadius: 8, marginTop: 10, background: '#12141c' }}
             />
             {geoPoints.length === 0 && (
-              <div className="text-muted text-center mt-2" style={{ fontSize: '0.78rem' }}>
-                Awaiting geo-tagged telemetry
+              <div className="text-muted text-center mt-2" style={{ fontSize: '0.8rem' }}>
+                No geolocated threats yet
               </div>
             )}
           </div>
-
           <div className="card p-4">
-            <h6 className="fw-bold mb-3">
-              <i className="fas fa-bolt text-warning me-2"></i> Rapid Triage Actions
+            <h6>
+              <i className="fas fa-info-circle"></i> Quick Actions
             </h6>
-            <div className="d-flex flex-column gap-2">
-              <Link to="/email/scan" className="btn btn-primary w-100 justify-content-start">
-                <i className="fas fa-envelope-open-text me-2"></i> Open Email Scanner
-              </Link>
-              <Link to="/forensic/scan" className="btn btn-outline-secondary w-100 justify-content-start">
-                <i className="fas fa-microscope me-2"></i> Upload Raw .EML File
-              </Link>
-              <Link to="/threat-map" className="btn btn-outline-secondary w-100 justify-content-start">
-                <i className="fas fa-map-location-dot me-2"></i> Launch Full Screen Threat Map
-              </Link>
-            </div>
+            <Link to="/email/scan" className="btn btn-primary w-100 mt-2">
+              <i className="fas fa-envelope"></i> Scan Gmail
+            </Link>
+            <Link to="/threat-map" className="btn btn-outline-secondary w-100 mt-2">
+              <i className="fas fa-map"></i> View Full Map
+            </Link>
           </div>
         </div>
       </div>

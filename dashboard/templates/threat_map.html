@@ -142,10 +142,7 @@
     attributionControl: false,
   });
 
-  L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; CartoDB',
-  }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: '© Esri' }).addTo(map);
 
   const originLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);

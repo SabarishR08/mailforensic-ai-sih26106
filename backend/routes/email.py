@@ -2,6 +2,7 @@
 import json
 import asyncio
 import logging
+import re
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +16,6 @@ except ImportError:
 from backend.services.gmail_service import fetch_recent_emails, GmailAuthError
 from backend.services.sample_emails import get_sample_emails
 from backend.services.email_scanner import scan_emails, scan_emails_streaming
-from backend.services.ml_predictor import get_ml_predictor
 from backend.extensions import socketio
 from backend.models import db, EmailScanResult
 from backend.spa import spa_enabled, spa_index
@@ -76,19 +76,33 @@ def demo_page():
 @email_bp.route('/api/scan/gmail', methods=['POST'])
 def scan_gmail():
     limit = request.json.get('limit', 5) if request.is_json else 5
+    is_fallback = False
+    fallback_reason = ''
     try:
         emails = fetch_recent_emails(limit=limit)
-    except FileNotFoundError:
-        logger.warning('Gmail API is not configured on this server')
-        return jsonify({'code': 'gmail_not_configured', 'error': 'Gmail API is not configured on this server. Add GMAIL_CREDENTIALS_JSON and GMAIL_REFRESH_TOKEN environment variables (or a local credentials.json), then restart.', 'results': []}), 200
+        source = 'gmail'
+    except FileNotFoundError as e:
+        logger.warning('Gmail API not configured; falling back to sample emails: %s', e)
+        emails = get_sample_emails(limit=limit)
+        is_fallback = True
+        source = 'sample_fallback'
+        fallback_reason = 'Gmail API credentials are not configured on this server. Displaying simulated Inbox emails.'
     except GmailAuthError as e:
-        logger.error('Gmail auth rejected: %s', e)
-        return jsonify({'code': 'gmail_auth_failed', 'error': str(e)[:300], 'results': []}), 200
+        logger.error('Gmail auth rejected; falling back to sample emails: %s', e)
+        emails = get_sample_emails(limit=limit)
+        is_fallback = True
+        source = 'sample_fallback'
+        fallback_reason = f'Gmail authentication was rejected ({str(e)[:150]}). Displaying simulated Inbox emails.'
     except Exception as e:
-        logger.error(f'Gmail fetch failed: {e}')
-        return jsonify({'code': 'gmail_error', 'error': f'Gmail connection failed: {str(e)[:200]}', 'results': []}), 200
+        logger.error(f'Gmail fetch failed ({e}); falling back to sample emails')
+        emails = get_sample_emails(limit=limit)
+        is_fallback = True
+        source = 'sample_fallback'
+        fallback_reason = f'Gmail connection failed: {str(e)[:150]}. Displaying simulated Inbox emails.'
+
     if not emails:
-        return jsonify({'code': 'gmail_empty', 'error': 'Connected to Gmail but it returned 0 messages. Confirm the account has mail and the Gmail API scope includes read access.', 'results': []}), 200
+        emails = get_sample_emails(limit=limit)
+        source = 'sample_fallback'
 
     loop = asyncio.new_event_loop()
     results = loop.run_until_complete(scan_emails(emails, limit=limit))
@@ -110,10 +124,16 @@ def scan_gmail():
             full_result=json.dumps(r, default=str),
         )
         db.session.add(scan)
-        log_analysis(r, source='gmail')
+        log_analysis(r, source=source)
     db.session.commit()
 
-    return jsonify({'count': len(results), 'results': results, 'source': 'gmail'})
+    return jsonify({
+        'count': len(results),
+        'results': results,
+        'source': source,
+        'is_fallback': is_fallback,
+        'fallback_reason': fallback_reason
+    })
 
 
 @email_bp.route('/api/scan/sample', methods=['POST'])
@@ -153,18 +173,30 @@ def scan_sample():
 
 @email_bp.route('/api/scan/text', methods=['POST'])
 def scan_text():
+    """Run the complete analysis pipeline for manually pasted email text."""
     email_text = request.json.get('text', '') if request.is_json else ''
     if not email_text:
         return jsonify({'error': 'No email text provided'}), 400
 
-    predictor = get_ml_predictor()
-    prediction, confidence = predictor.predict_email(email_text) if predictor.is_email_model_loaded() else ('unknown', 0.5)
+    # Previously this endpoint returned only a raw ML label. That made the
+    # manual scanner silently skip URL intelligence, QR/CID checks, NLP and
+    # composite risk scoring. Keep the endpoint name, but provide the same
+    # normalized result shape as Gmail/sample scans.
+    subject_match = re.search(r'^Subject:\s*(.+)$', email_text, re.MULTILINE | re.IGNORECASE)
+    email_data = {
+        'id': 'manual_text_scan',
+        'body': email_text,
+        'raw_body': email_text,
+        'raw_headers': '',
+        'subject': subject_match.group(1).strip() if subject_match else 'Manual text scan',
+    }
+    loop = asyncio.new_event_loop()
+    try:
+        result = loop.run_until_complete(scan_emails([email_data], limit=1))[0]
+    finally:
+        loop.close()
 
-    return jsonify({
-        'prediction': prediction,
-        'confidence': round(confidence, 4),
-        'model_loaded': predictor.is_email_model_loaded(),
-    })
+    return jsonify(result)
 
 
 @email_bp.route('/api/logs')
@@ -242,30 +274,32 @@ def handle_demo_scan(data):
     limit = data.get('limit', 5)
     use_sample = data.get('use_sample', False)  # New parameter
 
+    app = current_app._get_current_object()
+
     def run_scan():
-        if use_sample:
-            emails = get_sample_emails(limit=limit)
-            source = 'sample'
-        else:
-            emails = fetch_recent_emails(limit=limit)
-            source = 'gmail'
-        
-        if not emails:
-            socketio.emit('scan_error', {
-                'message': 'No emails fetched. Check Gmail credentials or use sample data.',
-                'error': 'No emails'
-            }, room='demo')
-            return
+        with app.app_context():
+            if use_sample:
+                emails = get_sample_emails(limit=limit)
+                source = 'sample'
+            else:
+                emails = fetch_recent_emails(limit=limit)
+                source = 'gmail'
+            
+            if not emails:
+                socketio.emit('scan_error', {
+                    'message': 'No emails fetched. Check Gmail credentials or use sample data.',
+                    'error': 'No emails'
+                }, room='demo')
+                return
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(
-            scan_emails_streaming(emails, limit=limit, socketio_instance=socketio, room='demo')
-        )
-        loop.close()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            results = loop.run_until_complete(
+                scan_emails_streaming(emails, limit=limit, socketio_instance=socketio, room='demo')
+            )
+            loop.close()
 
-        # Persist results
-        with db.engine.connect() as conn:
+            # Persist results
             for r in results:
                 risk = r.get('risk_assessment', {})
                 geo = r.get('geo', {})

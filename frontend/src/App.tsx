@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import DashboardPage from './pages/DashboardPage'
 import EmailScannerPage from './pages/EmailScannerPage'
+import BatchScannerPage from './pages/BatchScannerPage'
+import CampaignsPage from './pages/CampaignsPage'
 import DemoPage from './pages/DemoPage'
 import ForensicEmlPage from './pages/ForensicEmlPage'
 import ForensicReportPage from './pages/ForensicReportPage'
@@ -17,6 +19,8 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/email/scan" element={<EmailScannerPage />} />
+        <Route path="/email/batch" element={<BatchScannerPage />} />
+        <Route path="/dashboard/campaigns" element={<CampaignsPage />} />
         <Route path="/email/demo" element={<DemoPage />} />
         <Route path="/forensic/scan" element={<ForensicEmlPage />} />
         <Route path="/forensic/report/:scanId" element={<ForensicReportPage />} />

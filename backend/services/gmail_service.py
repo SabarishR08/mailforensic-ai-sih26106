@@ -9,10 +9,16 @@ import json
 import pickle
 import base64
 import logging
+import ssl
+import tempfile
 from pathlib import Path
 from bs4 import BeautifulSoup
 try:
+    import certifi
+    import httplib2
+    import requests
     from google.auth.transport.requests import Request
+    from google_auth_httplib2 import AuthorizedHttp
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
     from googleapiclient.discovery import build
@@ -39,6 +45,44 @@ TOKEN_PATH = BASE_DIR / "credentials" / "token.pickle"
 logger = logging.getLogger(__name__)
 
 
+def _ca_bundle_path() -> str:
+    """Return Certifi roots plus Windows-trusted enterprise roots when present."""
+    bundle_path = Path(tempfile.gettempdir()) / 'mailforensic-trusted-ca.pem'
+    try:
+        windows_roots = ssl.enum_certificates('ROOT')
+        pem_roots = []
+        for certificate, encoding, trust in windows_roots:
+            if encoding == 'x509_asn':
+                pem_roots.append(
+                    '-----BEGIN CERTIFICATE-----\n'
+                    + base64.encodebytes(certificate).decode('ascii')
+                    + '-----END CERTIFICATE-----\n'
+                )
+        # Use a deterministic complete bundle so requests and httplib2 can
+        # validate public CAs and organization-installed TLS proxy CAs.
+        contents = Path(certifi.where()).read_text(encoding='ascii') + '\n' + ''.join(pem_roots)
+        if not bundle_path.exists() or bundle_path.read_text(encoding='ascii', errors='ignore') != contents:
+            bundle_path.write_text(contents, encoding='ascii')
+        return str(bundle_path)
+    except Exception as error:
+        logger.warning('Could not read Windows trusted roots; using Certifi only: %s', error)
+        return certifi.where()
+
+
+def _google_request():
+    """Create an authenticated request with the local trusted CA bundle."""
+    session = requests.Session()
+    session.verify = _ca_bundle_path()
+    return Request(session=session)
+
+
+def _gmail_service(creds):
+    """Build Gmail API client with certificate verification explicitly configured."""
+    http = httplib2.Http(ca_certs=_ca_bundle_path())
+    authorized_http = AuthorizedHttp(creds, http=http)
+    return build('gmail', 'v1', http=authorized_http, cache_discovery=False)
+
+
 def authenticate_gmail():
     if not GOOGLE_AUTH_AVAILABLE:
         raise FileNotFoundError("Google Auth library not installed. Operating in local demo/sample mode.")
@@ -47,9 +91,11 @@ def authenticate_gmail():
     
     # Method 1: Environment variables (for deployment)
     credentials_json = os.getenv('GMAIL_CREDENTIALS_JSON')
-    refresh_token = os.getenv('GMAIL_REFRESH_TOKEN')
+    refresh_token = os.getenv('GMAIL_REFRESH_TOKEN', '').strip()
     
-    if credentials_json and refresh_token:
+    is_placeholder = not refresh_token or 'YOUR_' in refresh_token.upper() or 'CHANGE_ME' in refresh_token.upper()
+
+    if credentials_json and refresh_token and not is_placeholder:
         try:
             client_secrets = json.loads(credentials_json)
             client_info = client_secrets.get('installed', client_secrets.get('web', {}))
@@ -62,9 +108,9 @@ def authenticate_gmail():
                 client_secret=client_info.get('client_secret'),
                 scopes=SCOPES
             )
-            creds.refresh(Request())
+            creds.refresh(_google_request())
             logger.info("Authenticated via environment variables")
-            return build('gmail', 'v1', credentials=creds)
+            return _gmail_service(creds)
             
         except Exception as e:
             logger.error(f"Env var auth failed: {e}")
@@ -97,7 +143,7 @@ def authenticate_gmail():
     # Refresh an expired token if possible
     if creds and creds.expired and creds.refresh_token:
         try:
-            creds.refresh(Request())
+            creds.refresh(_google_request())
         except Exception as e:
             logger.error(f'Token refresh failed: {e}')
             creds = None
@@ -115,7 +161,7 @@ def authenticate_gmail():
     with open(TOKEN_PATH, 'wb') as token:
         pickle.dump(creds, token)
 
-    return build('gmail', 'v1', credentials=creds)
+    return _gmail_service(creds)
 
 
 def _extract_email_body(payload: dict) -> str:
