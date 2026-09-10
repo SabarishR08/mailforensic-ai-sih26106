@@ -393,3 +393,73 @@ class TestForensicAnalyzerFullAnalysis:
         result = fa.analyze(CLEAN_EMAIL)
         assert result['subject'] == 'Your monthly statement'
         assert 'abc123@example.com' in result['message_id']
+
+
+class TestAdvancedForensicDetections:
+    """Tests for Phase 2: Display-Name Spoofing, Homoglyphs & Typosquatting."""
+
+    def test_display_name_spoofing_freemail(self):
+        fa = ForensicAnalyzer()
+        email_text = """\
+From: "PayPal Support Team" <fraudalert9912@gmail.com>
+To: target@victim.com
+Subject: Your account has been limited
+Date: Mon, 25 Aug 2025 10:30:00 +0000
+Message-ID: <12345@gmail.com>
+"""
+        result = fa.analyze(email_text)
+        types = [m['type'] for m in result['mismatches']]
+        assert 'DISPLAY_NAME_SPOOFING' in types
+        match = next(m for m in result['mismatches'] if m['type'] == 'DISPLAY_NAME_SPOOFING')
+        assert match['severity'] == 'HIGH'
+        assert match['brand'] == 'paypal'
+
+    def test_display_name_legitimate_brand_no_spoof(self):
+        fa = ForensicAnalyzer()
+        email_text = """\
+From: "PayPal Support" <service@paypal.com>
+To: target@victim.com
+Subject: Receipt for your payment
+Date: Mon, 25 Aug 2025 10:30:00 +0000
+Message-ID: <12345@paypal.com>
+"""
+        result = fa.analyze(email_text)
+        types = [m['type'] for m in result['mismatches']]
+        assert 'DISPLAY_NAME_SPOOFING' not in types
+
+    def test_typosquat_homoglyph_detection(self):
+        fa = ForensicAnalyzer()
+        # 'paypa1.com' with digit 1 replacing l
+        ts = fa._detect_typosquatting('paypa1.com')
+        assert ts is not None
+        assert ts['brand'] == 'paypal'
+
+        # Cyrillic 'а' replacing Latin 'a' in 'paypal.com'
+        ts_homoglyph = fa._detect_typosquatting('pаypаl.com')
+        assert ts_homoglyph is not None
+
+    def test_typosquat_edit_distance(self):
+        fa = ForensicAnalyzer()
+        ts = fa._detect_typosquatting('micros0ft.com')
+        assert ts is not None
+        assert ts['brand'] == 'microsoft'
+
+    def test_typosquat_brand_subdomain_deception(self):
+        fa = ForensicAnalyzer()
+        ts = fa._detect_typosquatting('paypal-verification-center.com')
+        assert ts is not None
+        assert ts['brand'] == 'paypal'
+
+    def test_typosquat_in_email_analysis(self):
+        fa = ForensicAnalyzer()
+        email_text = """\
+From: security@paypa1.com
+To: user@example.com
+Subject: Urgent Security Update
+Date: Mon, 25 Aug 2025 10:30:00 +0000
+Message-ID: <sec@paypa1.com>
+"""
+        result = fa.analyze(email_text)
+        types = [m['type'] for m in result['mismatches']]
+        assert 'TYPOSQUAT_DOMAIN_DETECTED' in types
+

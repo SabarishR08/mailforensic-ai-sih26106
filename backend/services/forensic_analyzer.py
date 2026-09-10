@@ -24,6 +24,160 @@ class ForensicAnalyzer:
     IPV4_PATTERN = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
     IPV6_PATTERN = re.compile(r'(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|:(?::[0-9a-fA-F]{1,4}){1,7}')
 
+    # Curated high-profile banking, tech, and enterprise brand domains
+    TARGET_BRANDS = {
+        'paypal': 'paypal.com',
+        'microsoft': 'microsoft.com',
+        'google': 'google.com',
+        'apple': 'apple.com',
+        'amazon': 'amazon.com',
+        'netflix': 'netflix.com',
+        'facebook': 'facebook.com',
+        'meta': 'meta.com',
+        'instagram': 'instagram.com',
+        'linkedin': 'linkedin.com',
+        'twitter': 'twitter.com',
+        'dropbox': 'dropbox.com',
+        'github': 'github.com',
+        'chase': 'chase.com',
+        'bankofamerica': 'bankofamerica.com',
+        'wellsfargo': 'wellsfargo.com',
+        'citibank': 'citi.com',
+        'citi': 'citi.com',
+        'hdfc': 'hdfcbank.com',
+        'hdfcbank': 'hdfcbank.com',
+        'icici': 'icicibank.com',
+        'icicibank': 'icicibank.com',
+        'sbi': 'sbi.co.in',
+        'statebankofindia': 'sbi.co.in',
+        'axisbank': 'axisbank.com',
+        'irctc': 'irctc.co.in',
+    }
+
+    FREE_MAIL_PROVIDERS = {
+        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
+        'aol.com', 'mail.ru', 'yandex.com', 'proton.me', 'protonmail.com'
+    }
+
+    HOMOGLYPH_MAP = {
+        'а': 'a', 'с': 'c', 'е': 'e', 'о': 'o', 'р': 'p', 'х': 'x', 'у': 'y',
+        'і': 'i', 'ј': 'j', 'ѕ': 's', 'ԁ': 'd', 'ԛ': 'q', 'ԝ': 'w',
+        '0': 'o', '1': 'l', '3': 'e', '5': 's', '8': 'b', 'vv': 'w', 'rn': 'm',
+    }
+
+    def _normalize_homoglyphs(self, text: str) -> str:
+        """Normalize Unicode confusables and visual lookalikes to basic Latin ASCII."""
+        result = text.lower()
+        for k, v in self.HOMOGLYPH_MAP.items():
+            result = result.replace(k, v)
+        return result
+
+    @staticmethod
+    def _levenshtein(s1: str, s2: str) -> int:
+        """Compute standard Levenshtein edit distance."""
+        if len(s1) < len(s2):
+            return ForensicAnalyzer._levenshtein(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        return previous_row[-1]
+
+    def _detect_typosquatting(self, domain: str) -> Optional[Dict]:
+        """Detect if domain is a typosquat or homoglyph impersonation of a target brand."""
+        if not domain:
+            return None
+
+        clean_dom = domain.lower().strip()
+        # Remove subdomain prefix if present (e.g. mail.paypal.com -> paypal.com)
+        parts = clean_dom.split('.')
+        if len(parts) >= 2:
+            base_dom = '.'.join(parts[-2:])
+            base_name = parts[-2]
+        else:
+            base_dom = clean_dom
+            base_name = clean_dom
+
+        # If it is the exact legitimate brand domain, no typosquat
+        if base_dom in self.TARGET_BRANDS.values():
+            return None
+
+        # Check homoglyphs
+        normalized_dom = self._normalize_homoglyphs(clean_dom)
+        normalized_base = self._normalize_homoglyphs(base_name)
+
+        for brand_key, target_dom in self.TARGET_BRANDS.items():
+            target_base = target_dom.split('.')[0]
+            # 1. Check normalized base name match (e.g. paypa1 -> paypal, microsоft -> microsoft)
+            if normalized_base == target_base and base_name != target_base:
+                return {
+                    'brand': brand_key,
+                    'target_domain': target_dom,
+                    'type': 'HOMOGLYPH_LOOKALIKE',
+                    'detail': f"Domain '{domain}' uses lookalike/homoglyph characters imitating '{target_dom}'"
+                }
+
+            # 2. Levenshtein edit distance = 1 on domain or base name (e.g. paypai.com, g00gle.com)
+            dist_base = self._levenshtein(normalized_base, target_base)
+            if 1 <= dist_base <= 2 and len(target_base) >= 4 and abs(len(normalized_base) - len(target_base)) <= 2:
+                return {
+                    'brand': brand_key,
+                    'target_domain': target_dom,
+                    'type': 'TYPOSQUAT_DISTANCE',
+                    'detail': f"Domain '{domain}' is {dist_base} edit(s) away from target brand '{target_dom}'"
+                }
+
+            # 3. Target brand name embedded as a deceptive subdomain or hyphenation (e.g. paypal-security-update.com)
+            if brand_key in base_name and base_dom != target_dom:
+                return {
+                    'brand': brand_key,
+                    'target_domain': target_dom,
+                    'type': 'BRAND_KEYWORD_IN_DOMAIN',
+                    'detail': f"Domain '{domain}' incorporates brand name '{brand_key}' without being '{target_dom}'"
+                }
+
+        return None
+
+    def _detect_display_name_spoofing(self, raw_from: str, from_addr: str) -> Optional[Dict]:
+        """
+        Detect display-name spoofing: display name claims a trusted brand
+        while the actual envelope address uses a free mailer or unrelated domain.
+        Example: "PayPal Support" <billing123@gmail.com>
+        """
+        if not raw_from:
+            return None
+
+        display_name, addr = parseaddr(raw_from)
+        if not display_name or not addr:
+            return None
+
+        display_name_lower = display_name.lower().strip()
+        from_domain = addr.split('@')[-1].lower() if '@' in addr else ''
+
+        for brand_key, legitimate_domain in self.TARGET_BRANDS.items():
+            # If brand keyword appears in display name (word boundary or clear match)
+            if re.search(rf'\b{re.escape(brand_key)}\b', display_name_lower):
+                # If the sender address does NOT match the legitimate brand domain
+                if not from_domain.endswith(legitimate_domain):
+                    severity = 'HIGH' if from_domain in self.FREE_MAIL_PROVIDERS else 'MEDIUM'
+                    return {
+                        'type': 'DISPLAY_NAME_SPOOFING',
+                        'severity': severity,
+                        'brand': brand_key,
+                        'claimed_identity': display_name,
+                        'actual_domain': from_domain,
+                        'legitimate_domain': legitimate_domain,
+                        'detail': f"Display name '{display_name}' claims '{brand_key.title()}' identity, but sender domain is '{from_domain}' instead of '{legitimate_domain}'"
+                    }
+        return None
+
     def analyze(self, email_text: str, geo_service=None) -> Dict:
         """
         Full forensic analysis of an email.
@@ -34,7 +188,8 @@ class ForensicAnalyzer:
         except Exception as e:
             return {'error': str(e), 'trust_score': 0, 'trust_level': 'UNKNOWN'}
 
-        from_addr = self._parse_email_address(msg.get('From', ''))
+        raw_from = msg.get('From', '')
+        from_addr = self._parse_email_address(raw_from)
         reply_to = self._parse_email_address(msg.get('Reply-To', ''))
         return_path = self._parse_email_address(msg.get('Return-Path', ''))
 
@@ -46,6 +201,32 @@ class ForensicAnalyzer:
         routing_analysis = self._analyze_routing(received_headers, geo_service)
 
         mismatches = self._detect_mismatches(from_addr, reply_to, return_path)
+
+        # Check Display-Name Spoofing
+        dn_spoof = self._detect_display_name_spoofing(raw_from, from_addr)
+        if dn_spoof:
+            mismatches.append(dn_spoof)
+
+        # Check Typosquatting / Homoglyph on From and Reply-To domains
+        from_domain = from_addr.split('@')[-1] if '@' in from_addr else ''
+        if from_domain:
+            ts = self._detect_typosquatting(from_domain)
+            if ts:
+                mismatches.append({
+                    'type': 'TYPOSQUAT_DOMAIN_DETECTED',
+                    'severity': 'HIGH',
+                    'detail': ts['detail'],
+                })
+
+        reply_domain = reply_to.split('@')[-1] if '@' in reply_to else ''
+        if reply_domain and reply_domain != from_domain:
+            ts_reply = self._detect_typosquatting(reply_domain)
+            if ts_reply:
+                mismatches.append({
+                    'type': 'TYPOSQUAT_REPLYTO_DETECTED',
+                    'severity': 'HIGH',
+                    'detail': ts_reply['detail'],
+                })
 
         # Cross-check X-Originating-IP against Received chain
         x_orig_raw = msg.get('X-Originating-IP', '').strip(' []\'"')
@@ -366,8 +547,15 @@ class ForensicAnalyzer:
         return match.group(1) if match else None
 
     def _extract_timestamp_from_received(self, header: str) -> Optional[str]:
+        # Standard RFC 822/2822: ; Mon, 25 Aug 2025 10:29:50 +0000
         match = re.search(r';\s*(\w{3},\s+\d+\s+\w+\s+\d+\s+[\d:]+\s+[\w\s+\-]+)', header)
-        return match.group(1).strip() if match else None
+        if match:
+            return match.group(1).strip()
+        # Fallback for date without weekday: ; 25 Aug 2025 10:29:50 +0000
+        match2 = re.search(r';\s*(\d{1,2}\s+\w{3}\s+\d{4}\s+[\d:]+\s+[\w\s+\-]+)', header)
+        if match2:
+            return match2.group(1).strip()
+        return None
 
     def _is_private_ip(self, ip: str) -> bool:
         if not ip or not isinstance(ip, str):
