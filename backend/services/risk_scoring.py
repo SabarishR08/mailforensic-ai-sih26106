@@ -102,6 +102,12 @@ class RiskScoringEngine:
         total = sum(breakdown[k] * cls.WEIGHTS[k] for k in cls.WEIGHTS)
         risk_score = min(100, max(0, int(round(total))))
 
+        # Calibrate risk score and level to ensure consistency with ML prediction and threats
+        ml_pred = ml.get('prediction', '').lower()
+        if ml_pred == 'phishing':
+            # A confirmed phishing payload must have at least Medium/High severity, never Low or Safe
+            risk_score = max(risk_score, 55)
+
         if risk_score >= 70:
             risk_level = 'Critical'
         elif risk_score >= 50:

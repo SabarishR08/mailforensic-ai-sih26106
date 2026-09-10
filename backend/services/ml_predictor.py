@@ -110,11 +110,14 @@ def _check_legitimate_signals(text: str) -> dict:
     anti_signals = []
 
     # --- Sender domain check (strongest signal) ---
-    from_match = re.search(r'from:\s*(\S+@([\w.-]+))', tl)
+    from_match = re.search(r'from:\s*(?:[^<@\n]+<)?([a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}))>?', tl)
     if from_match:
         sender_domain = from_match.group(2)
-        if any(sender_domain.endswith(d) for d in KNOWN_LEGITIMATE_DOMAINS):
+        if any(sender_domain.endswith(d) or sender_domain == d for d in KNOWN_LEGITIMATE_DOMAINS):
             signals.append('known_legitimate_domain')
+    elif any(d in tl for d in ['accounts.google.com', 'google.com', 'no-reply@accounts.google.com']):
+        # Additional check for raw Google account notification body patterns
+        signals.append('known_legitimate_domain')
 
     # --- Newsletter / mailing list signals ---
     if 'unsubscribe' in tl or 'opt out' in tl or 'opt-out' in tl:
