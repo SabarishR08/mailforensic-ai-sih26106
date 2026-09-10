@@ -95,19 +95,20 @@ class TestRiskScoringEngine:
     def test_weights_present(self):
         result = RiskScoringEngine.calculate({})
         assert 'weights' in result
-        assert len(result['weights']) == 6
+        assert len(result['weights']) == 7
         assert abs(sum(result['weights'].values()) - 1.0) < 0.01
 
     def test_breakdown_keys(self):
         result = RiskScoringEngine.calculate({
             'ml_result': {'prediction': 'phishing', 'confidence': 0.8},
             'threat_intel': {'threat_score': 50},
+            'url_intelligence': {'max_risk_score': 40},
             'forensic': {'trust_score': 40, 'authentication': {'spf': 'FAIL', 'dkim': 'PASS', 'dmarc': 'MISSING'}},
             'geo_data': {'risk_score': 30},
             'content_analysis': {'nlp_result': {'category': 'Suspicious'}},
         })
         breakdown = result['breakdown']
-        expected_keys = {'ml_prediction', 'threat_intel', 'authentication', 'geolocation', 'forensic', 'content'}
+        expected_keys = {'ml_prediction', 'threat_intel', 'url_intelligence', 'authentication', 'geolocation', 'forensic', 'content'}
         assert set(breakdown.keys()) == expected_keys
 
     def test_auth_fail_increases_score(self):

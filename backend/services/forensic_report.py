@@ -166,6 +166,46 @@ class ForensicReportGenerator:
         elements.append(auth_table)
         elements.append(Spacer(1, 15))
 
+        # --- Routing / Received Chain ---
+        routing = forensic.get('routing', {})
+        hops = routing.get('hops', [])
+        if hops:
+            elements.append(Paragraph("Routing Chain (Received Headers)", heading_style))
+            hop_data = [['Hop', 'From', 'By', 'IP', 'Geo', 'Suspicious']]
+            for hop in hops:
+                geo = hop.get('geo', {})
+                geo_str = f"{geo.get('city', '?')}, {geo.get('country_code', '?')}" if geo else '-'
+                hop_data.append([
+                    str(hop.get('hop_number', '')),
+                    str(hop.get('from_host', ''))[:25],
+                    str(hop.get('by_host', ''))[:25],
+                    str(hop.get('ip', ''))[:15],
+                    geo_str[:20],
+                    '⚠ YES' if hop.get('suspicious') else 'no',
+                ])
+            hop_table = Table(hop_data, colWidths=[0.5*inch, 1.3*inch, 1.3*inch, 1.1*inch, 1.3*inch, 0.8*inch])
+            hop_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#283593')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('PADDING', (0, 0), (-1, -1), 4),
+            ]))
+            elements.append(hop_table)
+            elements.append(Spacer(1, 15))
+
+        # --- Header Mismatches ---
+        mismatches = forensic.get('mismatches', [])
+        if mismatches:
+            elements.append(Paragraph("Header Mismatches Detected", heading_style))
+            for mm in mismatches:
+                severity_color = '#d32f2f' if mm.get('severity') == 'HIGH' else '#f57c00'
+                elements.append(Paragraph(
+                    f"<b>[{mm.get('severity', '')}]</b> {mm.get('type', '')}: {mm.get('detail', '')}",
+                    ParagraphStyle('Mismatch', parent=body_style, textColor=colors.HexColor(severity_color))
+                ))
+            elements.append(Spacer(1, 15))
+
         # --- Risk Breakdown ---
         breakdown = risk.get('breakdown', {})
         if breakdown:

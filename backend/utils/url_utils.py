@@ -21,7 +21,7 @@ def _clean_url(found: str) -> str:
     """Strip trailing punctuation that commonly clings to URLs in prose."""
     cleaned = found.rstrip(".,);'\"]")
     if cleaned.lower().startswith("www."):
-        cleaned = f"http://{cleaned}"
+        cleaned = f"https://{cleaned}"
     return cleaned
 
 
