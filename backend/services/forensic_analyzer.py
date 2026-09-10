@@ -1,15 +1,18 @@
 """
 Unified Forensic Email Analyzer
 Parses email headers, traces routing hops with geo-enrichment,
-checks SPF/DKIM/DMARC, and generates trust scores.
-Merges logic from header_analyzer.py + email_analyzer.py.
+checks SPF/DKIM/DMARC, detects header spoofing, and generates trust scores.
+Updated with reverse hop origin IP resolution, IPv6 support, client vs by IP labeling,
+chronological order validation, and X-Originating-IP cross-checking.
 """
 
 import re
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from email import message_from_string
-from email.utils import parseaddr
+from email.utils import parseaddr, parsedate_to_datetime
+
+from backend.utils.url_utils import is_valid_ipv4, is_valid_ipv6, is_valid_ip
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,9 @@ logger = logging.getLogger(__name__)
 class ForensicAnalyzer:
     """Deep forensic analysis of email headers and authentication"""
 
-    SUSPICIOUS_KEYWORDS = ['localhost', '127.0.0.1', 'unknown', 'dynamic', 'dhcp']
+    SUSPICIOUS_KEYWORDS = ['localhost', '127.0.0.1', 'unknown', 'dynamic', 'dhcp', 'tor-exit']
+    IPV4_PATTERN = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+    IPV6_PATTERN = re.compile(r'(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|:(?::[0-9a-fA-F]{1,4}){1,7}')
 
     def analyze(self, email_text: str, geo_service=None) -> Dict:
         """
@@ -40,35 +45,70 @@ class ForensicAnalyzer:
         received_headers = msg.get_all('Received', [])
         routing_analysis = self._analyze_routing(received_headers, geo_service)
 
-        # Fallback: extract origin IP from X-Originating-IP if routing didn't find one
-        if not routing_analysis.get('origin_ip'):
-            x_orig_ip = msg.get('X-Originating-IP', '').strip('[]')
+        mismatches = self._detect_mismatches(from_addr, reply_to, return_path)
+
+        # Cross-check X-Originating-IP against Received chain
+        x_orig_raw = msg.get('X-Originating-IP', '').strip(' []\'"')
+        x_orig_ip = self._extract_first_ip(x_orig_raw) if x_orig_raw else ''
+
+        if x_orig_ip:
+            chain_ips = [h.get('ip') for h in routing_analysis.get('hops', []) if h.get('ip')]
+            if not self._is_private_ip(x_orig_ip) and chain_ips and x_orig_ip not in chain_ips:
+                mismatches.append({
+                    'type': 'SPOOFED_X_ORIGINATING_IP',
+                    'severity': 'HIGH',
+                    'detail': f'X-Originating-IP ({x_orig_ip}) does not match any hop in Received routing chain (possible header spoofing)',
+                })
+
+        # Fallback 1: Extract origin IP from X-Originating-IP if routing didn't find a public IP
+        if not routing_analysis.get('origin_ip') or routing_analysis.get('origin_confidence', '').startswith('LOW'):
             if x_orig_ip and not self._is_private_ip(x_orig_ip):
                 routing_analysis['origin_ip'] = x_orig_ip
-                # Add as a hop
-                hop = {'hop_number': 0, 'ip': x_orig_ip, 'from_host': 'X-Originating-IP', 'by_host': '', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': []}
+                routing_analysis['origin_confidence'] = 'MEDIUM - X-Originating-IP header'
+                hop = {
+                    'hop_number': 0, 'ip': x_orig_ip, 'from_host': 'X-Originating-IP',
+                    'by_host': '', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': []
+                }
                 if geo_service:
                     try:
                         geo_data = geo_service.lookup_ip(x_orig_ip)
-                        hop['geo'] = {'city': geo_data.get('city'), 'country': geo_data.get('country'), 'country_code': geo_data.get('country_code'), 'org': geo_data.get('org'), 'is_hosting': geo_data.get('is_hosting'), 'risk_score': geo_data.get('risk_score')}
+                        hop['geo'] = {
+                            'city': geo_data.get('city'), 'country': geo_data.get('country'),
+                            'country_code': geo_data.get('country_code'), 'org': geo_data.get('org'),
+                            'is_hosting': geo_data.get('is_hosting'), 'risk_score': geo_data.get('risk_score')
+                        }
                     except Exception:
                         pass
-                routing_analysis['hops'].insert(0, hop)
+                routing_analysis['hops'].append(hop)
 
-        # Fallback: resolve From domain to IP if still no origin IP
+        # Fallback 2: resolve From domain to IP if still no origin IP
         if not routing_analysis.get('origin_ip') and from_addr and '@' in from_addr and geo_service:
             from_domain = from_addr.split('@')[-1]
             try:
                 geo_result = geo_service.lookup_domain(from_domain)
                 if geo_result and geo_result.get('ip'):
                     routing_analysis['origin_ip'] = geo_result['ip']
-                    hop = {'hop_number': 0, 'ip': geo_result['ip'], 'from_host': from_domain, 'by_host': 'DNS-resolved', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': [],
-                           'geo': {'city': geo_result.get('city'), 'country': geo_result.get('country'), 'country_code': geo_result.get('country_code'), 'org': geo_result.get('org'), 'is_hosting': geo_result.get('is_hosting'), 'risk_score': geo_result.get('risk_score')}}
-                    routing_analysis['hops'].insert(0, hop)
+                    routing_analysis['origin_confidence'] = 'LOW - DNS resolution of From domain'
+                    hop = {
+                        'hop_number': 0, 'ip': geo_result['ip'], 'from_host': from_domain,
+                        'by_host': 'DNS-resolved', 'timestamp': '', 'suspicious': False, 'suspicious_reasons': [],
+                        'geo': {
+                            'city': geo_result.get('city'), 'country': geo_result.get('country'),
+                            'country_code': geo_result.get('country_code'), 'org': geo_result.get('org'),
+                            'is_hosting': geo_result.get('is_hosting'), 'risk_score': geo_result.get('risk_score')
+                        }
+                    }
+                    routing_analysis['hops'].append(hop)
             except Exception:
                 pass
 
-        mismatches = self._detect_mismatches(from_addr, reply_to, return_path)
+        # Check for Received header timestamp chronology anomalies
+        if routing_analysis.get('chronology_anomaly'):
+            mismatches.append({
+                'type': 'SPOOFED_RECEIVED_CHAIN',
+                'severity': 'HIGH',
+                'detail': 'Received header timestamps are out of chronological order (potential header spoofing/tampering)',
+            })
 
         analysis = {
             'from_address': from_addr,
@@ -78,7 +118,7 @@ class ForensicAnalyzer:
             'date': msg.get('Date', ''),
             'message_id': msg.get('Message-ID', ''),
             'x_mailer': msg.get('X-Mailer', ''),
-            'x_originating_ip': msg.get('X-Originating-IP', ''),
+            'x_originating_ip': x_orig_ip,
             'authentication': {
                 'spf': spf_status,
                 'dkim': dkim_status,
@@ -144,32 +184,64 @@ class ForensicAnalyzer:
         return 'MISSING'
 
     def _analyze_routing(self, received_headers: List[str], geo_service=None) -> Dict:
-        """Analyze Received header chain with optional geo-enrichment per hop"""
+        """
+        Analyze Received header chain with geo-enrichment.
+        CRITICAL FIX: Received headers are prepended top-to-bottom.
+        `received_headers[0]` is the most recent hop (recipient server).
+        `received_headers[-1]` is the origin hop (closest to original sender/attacker).
+        """
         if not received_headers:
             return {
                 'hop_count': 0,
                 'hops': [],
                 'origin_ip': None,
+                'origin_confidence': 'NONE',
                 'suspicious_hops': [],
                 'suspicious': True,
+                'chronology_anomaly': False,
             }
 
         hops = []
         suspicious_hops = []
+        parsed_dates = []
 
         for i, header in enumerate(received_headers):
+            client_ip, by_ip = self._extract_ips_from_received(header)
+            ip = client_ip or by_ip
+            from_host = self._extract_host_from_received(header)
+            by_host = self._extract_by_host_from_received(header)
+
+            # IP-in-hostname resolution fallback if no literal IP in brackets
+            if not ip and from_host and geo_service:
+                try:
+                    res = geo_service.lookup_domain(from_host)
+                    if res and res.get('ip'):
+                        ip = res['ip']
+                except Exception:
+                    pass
+
+            ts_str = self._extract_timestamp_from_received(header)
+            dt_obj = None
+            if ts_str:
+                try:
+                    dt_obj = parsedate_to_datetime(ts_str)
+                    parsed_dates.append((i, dt_obj))
+                except Exception:
+                    pass
+
             hop_data = {
                 'hop_number': i + 1,
                 'raw': header[:200],
-                'ip': self._extract_ip_from_received(header),
-                'from_host': self._extract_host_from_received(header),
-                'by_host': self._extract_by_host_from_received(header),
-                'timestamp': self._extract_timestamp_from_received(header),
+                'ip': ip,
+                'client_ip': client_ip,
+                'by_ip': by_ip,
+                'from_host': from_host,
+                'by_host': by_host,
+                'timestamp': ts_str,
                 'suspicious': False,
                 'suspicious_reasons': [],
             }
 
-            # Check for suspicious patterns
             header_lower = header.lower()
             for keyword in self.SUSPICIOUS_KEYWORDS:
                 if keyword in header_lower:
@@ -177,7 +249,6 @@ class ForensicAnalyzer:
                     hop_data['suspicious_reasons'].append(f'Contains "{keyword}"')
                     break
 
-            # Geo-enrich the hop IP if geo_service available
             if hop_data['ip'] and geo_service:
                 try:
                     geo_data = geo_service.lookup_ip(hop_data['ip'])
@@ -197,24 +268,94 @@ class ForensicAnalyzer:
 
             hops.append(hop_data)
 
-        origin_ip = hops[0].get('ip') if hops else None
+        # Check timestamp chronology (top headers = newer, bottom headers = older)
+        chronology_anomaly = False
+        if len(parsed_dates) >= 2:
+            for idx in range(len(parsed_dates) - 1):
+                top_idx, top_dt = parsed_dates[idx]
+                bot_idx, bot_dt = parsed_dates[idx + 1]
+                # If earlier header in array (closer to recipient) is BEFORE later header (closer to sender)
+                if top_dt < bot_dt:
+                    chronology_anomaly = True
+                    break
+
+        # CRITICAL FIX: Pick origin IP by scanning backwards from earliest hop (hops[-1])
+        origin_ip = None
+        origin_confidence = 'NONE'
+
+        # 1. Look for earliest valid non-private IP starting from sender end (hops[-1])
+        for hop in reversed(hops):
+            hop_ip = hop.get('ip')
+            if hop_ip and not self._is_private_ip(hop_ip):
+                origin_ip = hop_ip
+                origin_confidence = 'HIGH'
+                break
+
+        # 2. Fallback: if every hop is private, use earliest hop's private IP
+        if not origin_ip:
+            for hop in reversed(hops):
+                hop_ip = hop.get('ip')
+                if hop_ip:
+                    origin_ip = hop_ip
+                    origin_confidence = 'LOW - internal relay only'
+                    break
 
         return {
             'hop_count': len(received_headers),
             'hops': hops,
             'origin_ip': origin_ip,
+            'origin_confidence': origin_confidence,
             'suspicious_hops': suspicious_hops,
-            'suspicious': len(suspicious_hops) > 0 or len(received_headers) > 10,
+            'suspicious': len(suspicious_hops) > 0 or len(received_headers) > 10 or chronology_anomaly,
             'excessive_hops': len(received_headers) > 10,
+            'chronology_anomaly': chronology_anomaly,
         }
 
+    def _extract_first_ip(self, text: str) -> Optional[str]:
+        if not text:
+            return None
+        v4_matches = self.IPV4_PATTERN.findall(text)
+        if v4_matches:
+            return v4_matches[0]
+        v6_matches = self.IPV6_PATTERN.findall(text)
+        if v6_matches:
+            return v6_matches[0]
+        return None
+
+    def _extract_ips_from_received(self, header: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Extract client IP (from 'from ... [IP]') and recipient IP (from 'by ... [IP]').
+        Returns: (client_ip, by_ip)
+        """
+        client_ip = None
+        by_ip = None
+
+        from_match = re.search(r'from\s+.*?\[([0-9a-fA-F:\.]+)\]', header, re.IGNORECASE)
+        if from_match:
+            candidate = from_match.group(1)
+            if is_valid_ip(candidate):
+                client_ip = candidate
+
+        by_match = re.search(r'by\s+.*?\[([0-9a-fA-F:\.]+)\]', header, re.IGNORECASE)
+        if by_match:
+            candidate = by_match.group(1)
+            if is_valid_ip(candidate):
+                by_ip = candidate
+
+        if not client_ip:
+            all_ips = self.IPV4_PATTERN.findall(header) + self.IPV6_PATTERN.findall(header)
+            for ip in all_ips:
+                if not self._is_private_ip(ip):
+                    client_ip = ip
+                    break
+            if not client_ip and all_ips:
+                client_ip = all_ips[0]
+
+        return client_ip, by_ip
+
     def _extract_ip_from_received(self, header: str) -> Optional[str]:
-        ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-        matches = re.findall(ip_pattern, header)
-        for ip in matches:
-            if not self._is_private_ip(ip):
-                return ip
-        return matches[0] if matches else None
+        client_ip, by_ip = self._extract_ips_from_received(header)
+        return client_ip or by_ip
 
     def _extract_host_from_received(self, header: str) -> Optional[str]:
         match = re.search(r'from\s+(\S+)', header, re.IGNORECASE)
@@ -229,15 +370,33 @@ class ForensicAnalyzer:
         return match.group(1).strip() if match else None
 
     def _is_private_ip(self, ip: str) -> bool:
-        parts = [int(p) for p in ip.split('.')]
-        if parts[0] == 10:
+        if not ip or not isinstance(ip, str):
             return True
-        if parts[0] == 172 and 16 <= parts[1] <= 31:
-            return True
-        if parts[0] == 192 and parts[1] == 168:
-            return True
-        if parts[0] == 127:
-            return True
+
+        ip = ip.strip()
+
+        if '.' in ip:
+            try:
+                parts = [int(p) for p in ip.split('.')]
+                if len(parts) == 4:
+                    if parts[0] == 10:
+                        return True
+                    if parts[0] == 172 and 16 <= parts[1] <= 31:
+                        return True
+                    if parts[0] == 192 and parts[1] == 168:
+                        return True
+                    if parts[0] == 127:
+                        return True
+                    if parts[0] == 169 and parts[1] == 254:
+                        return True
+            except ValueError:
+                return True
+
+        if ':' in ip:
+            lower = ip.lower()
+            if lower == '::1' or lower.startswith('fe80:') or lower.startswith('fc') or lower.startswith('fd'):
+                return True
+
         return False
 
     def _detect_mismatches(self, from_addr: str, reply_to: str, return_path: str) -> List[Dict]:
@@ -302,6 +461,10 @@ class ForensicAnalyzer:
         if routing.get('excessive_hops'):
             score -= 10
             details['excessive_hops_penalty'] = 10
+
+        if routing.get('chronology_anomaly'):
+            score -= 20
+            details['chronology_anomaly_penalty'] = 20
 
         hop_suspicious = len(routing.get('suspicious_hops', []))
         if hop_suspicious > 0:
