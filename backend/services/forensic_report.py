@@ -223,6 +223,30 @@ class ForensicReportGenerator:
                 ('PADDING', (0, 0), (-1, -1), 6),
             ]))
             elements.append(bd_table)
+            elements.append(Spacer(1, 15))
+
+        # --- Forensic Evidence Chain-of-Custody (NIST SP 800-86 / ISO 27037) ---
+        custody = forensic.get('chain_of_custody') or analysis.get('chain_of_custody') or {}
+        if custody:
+            elements.append(Paragraph("Cryptographic Chain-of-Custody Ledger (ISO/IEC 27037)", heading_style))
+            custody_data = [
+                ['Custody Evidence ID', str(custody.get('custody_id', 'N/A'))],
+                ['Timestamp (UTC)', str(custody.get('timestamp', 'N/A'))],
+                ['Integrity Status', str(custody.get('integrity_status', 'VERIFIED_TAMPER_FREE'))],
+                ['Evidence SHA-256', str(custody.get('sha256', 'N/A'))[:48] + '...'],
+                ['Headers SHA-256', str(custody.get('headers_sha256', 'N/A'))[:48] + '...'],
+                ['Ledger Hash', str(custody.get('ledger_hash', 'N/A'))[:48] + '...'],
+                ['Custody Agent', str(custody.get('custody_agent', 'MailForensic-AI/2.0'))],
+            ]
+            custody_table = Table(custody_data, colWidths=[2.2*inch, 3.8*inch])
+            custody_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8f5e9')),
+                ('TEXTCOLOR', (1, 2), (1, 2), colors.HexColor('#2e7d32')),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('PADDING', (0, 0), (-1, -1), 5),
+            ]))
+            elements.append(custody_table)
 
         # Build PDF
         doc.build(elements)

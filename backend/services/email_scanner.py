@@ -94,10 +94,11 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
     # 5. NLP Classification (Gemini)
     nlp_result = await classify_email_nlp(body)
 
-    # 6. Forensic Analysis (if headers available)
+    # 6. Forensic Analysis (if headers available, or synthesize from available content)
     forensic_result = {}
-    if raw_headers:
-        forensic_result = forensic.analyze(raw_headers, geo_service=geo_service)
+    content_for_forensic = raw_headers if raw_headers else (raw_body or body)
+    if content_for_forensic:
+        forensic_result = forensic.analyze(content_for_forensic, geo_service=geo_service)
 
     # 7. Geo enrichment of sender IP
     origin_ip = forensic_result.get('routing', {}).get('origin_ip')
@@ -128,6 +129,7 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
         'qr_analysis': qr_analysis,
         'nlp': nlp_result,
         'forensic': forensic_result,
+        'chain_of_custody': forensic_result.get('chain_of_custody', {}),
         'geo': geo_data,
         'risk_assessment': risk_assessment,
         'timestamp': datetime.now().isoformat(),

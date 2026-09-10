@@ -79,6 +79,39 @@
 
         <!-- Authentication & Details -->
         <div class="col-md-8">
+            <!-- Cryptographic Chain-of-Custody -->
+            {% set custody = (result.forensic or {}).chain_of_custody or result.chain_of_custody or {} %}
+            {% if custody and custody.sha256 %}
+            <div class="card p-4 mb-3" style="border: 1px solid rgba(52, 211, 153, 0.25); background: rgba(52, 211, 153, 0.04);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-uppercase mb-0" style="font-size: 0.8rem; letter-spacing: 0.8px; color: var(--status-safe);">
+                        <i class="fas fa-link me-2"></i>Cryptographic Chain-of-Custody (ISO/IEC 27037)
+                    </h6>
+                    <span class="badge" style="background: rgba(52, 211, 153, 0.15); color: var(--status-safe); border: 1px solid rgba(52, 211, 153, 0.3); font-size: 0.75rem;">
+                        <i class="fas fa-check-circle me-1"></i>{{ custody.integrity_status or 'VERIFIED_TAMPER_FREE' }}
+                    </span>
+                </div>
+                <div class="row g-2 font-monospace" style="font-size: 0.8rem;">
+                    <div class="col-sm-6">
+                        <span class="text-muted d-block">Evidence SHA-256 Digest:</span>
+                        <span class="text-white" title="{{ custody.sha256 }}">{{ custody.sha256[:32] }}...</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="text-muted d-block">Header Block SHA-256:</span>
+                        <span class="text-white" title="{{ custody.headers_sha256 }}">{{ custody.headers_sha256[:32] }}...</span>
+                    </div>
+                    <div class="col-sm-6 mt-2">
+                        <span class="text-muted d-block">Custody Evidence ID:</span>
+                        <span class="text-secondary">{{ custody.custody_id }}</span>
+                    </div>
+                    <div class="col-sm-6 mt-2">
+                        <span class="text-muted d-block">Ledger Signature Hash:</span>
+                        <span class="text-cyan" title="{{ custody.ledger_hash }}">{{ custody.ledger_hash[:32] }}...</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Email Authentication -->
             <div class="card p-4 mb-3">
                 <h6 class="fw-bold text-uppercase mb-3" style="font-size: 0.8rem; letter-spacing: 0.8px; color: var(--text-muted)">

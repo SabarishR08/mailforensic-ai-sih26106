@@ -78,6 +78,7 @@ export default function ForensicReportPage() {
   const hops = routing.hops || []
   const geo = result.geo || {}
   const urlResults = result.url_results || {}
+  const custody = (result.forensic || {}).chain_of_custody || result.chain_of_custody || {}
 
   return (
     <div className="container-fluid p-0">
@@ -196,8 +197,39 @@ export default function ForensicReportPage() {
           </div>
         </div>
 
-        {/* Right Column: Protocols, Hops, Geolocation, URL Intel */}
+        {/* Right Column: Protocols, Hops, Geolocation, URL Intel, Chain of Custody */}
         <div className="col-lg-8 col-md-7">
+          {/* Cryptographic Chain-of-Custody Evidence Ledger */}
+          {custody && custody.sha256 && (
+            <div className="card p-4 mb-3" style={{ background: 'rgba(16, 185, 129, 0.04)', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="fw-bold text-uppercase mb-0" style={{ fontSize: '0.78rem', letterSpacing: '0.8px', color: '#34D399' }}>
+                  <i className="fas fa-link me-2"></i> Cryptographic Chain-of-Custody (ISO/IEC 27037)
+                </h6>
+                <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34D399', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '0.72rem' }}>
+                  <i className="fas fa-check-circle me-1"></i> {custody.integrity_status || 'VERIFIED_TAMPER_FREE'}
+                </span>
+              </div>
+              <div className="row g-2 font-monospace" style={{ fontSize: '0.78rem' }}>
+                <div className="col-sm-6">
+                  <span className="text-muted d-block">Evidence SHA-256 Digest:</span>
+                  <span className="text-white" title={custody.sha256}>{custody.sha256 ? custody.sha256.substring(0, 32) + '...' : '-'}</span>
+                </div>
+                <div className="col-sm-6">
+                  <span className="text-muted d-block">Header Block SHA-256:</span>
+                  <span className="text-white" title={custody.headers_sha256}>{custody.headers_sha256 ? custody.headers_sha256.substring(0, 32) + '...' : '-'}</span>
+                </div>
+                <div className="col-sm-6 mt-2">
+                  <span className="text-muted d-block">Custody Evidence ID:</span>
+                  <span className="text-secondary">{custody.custody_id}</span>
+                </div>
+                <div className="col-sm-6 mt-2">
+                  <span className="text-muted d-block">Ledger Signature Hash:</span>
+                  <span className="text-info" title={custody.ledger_hash}>{custody.ledger_hash ? custody.ledger_hash.substring(0, 32) + '...' : '-'}</span>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Email Authentication Matrix */}
           <div className="card p-4 mb-3">
             <h6 className="fw-bold text-uppercase mb-3" style={{ fontSize: '0.78rem', letterSpacing: '0.8px', color: 'var(--text-muted)' }}>

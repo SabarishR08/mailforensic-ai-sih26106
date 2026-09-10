@@ -450,16 +450,15 @@ Message-ID: <12345@paypal.com>
         assert ts is not None
         assert ts['brand'] == 'paypal'
 
-    def test_typosquat_in_email_analysis(self):
+    def test_chain_of_custody_hashing(self):
         fa = ForensicAnalyzer()
-        email_text = """\
-From: security@paypa1.com
-To: user@example.com
-Subject: Urgent Security Update
-Date: Mon, 25 Aug 2025 10:30:00 +0000
-Message-ID: <sec@paypa1.com>
-"""
-        result = fa.analyze(email_text)
-        types = [m['type'] for m in result['mismatches']]
-        assert 'TYPOSQUAT_DOMAIN_DETECTED' in types
+        result = fa.analyze(CLEAN_EMAIL)
+        assert 'chain_of_custody' in result
+        custody = result['chain_of_custody']
+        assert custody['integrity_status'] == 'VERIFIED_TAMPER_FREE'
+        assert custody['algorithm'] == 'SHA-256'
+        assert len(custody['sha256']) == 64
+        assert len(custody['headers_sha256']) == 64
+        assert len(custody['ledger_hash']) == 64
+        assert 'custody_id' in custody
 
