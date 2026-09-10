@@ -5,7 +5,7 @@
 
 ## 📌 Overview
 
-AI-powered email threat detection, geolocation and forensic intelligence platform — SIH 2026, AICTE problem statement (Team Mutex)
+AI-powered email threat detection, geolocation and forensic intelligence platform — SIH 2026, AICTE problem statement
 
 ## 🏗️ Architecture
 
