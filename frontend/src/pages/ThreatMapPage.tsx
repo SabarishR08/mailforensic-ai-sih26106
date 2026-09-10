@@ -57,9 +57,9 @@ export default function ThreatMapPage() {
       zoomControl: true,
       attributionControl: false,
     })
-    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap &copy; CartoDB',
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
     }).addTo(map)
     mapRef.current = map
     originLayerRef.current = L.layerGroup().addTo(map)

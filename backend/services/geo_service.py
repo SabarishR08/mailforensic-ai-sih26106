@@ -38,6 +38,7 @@ class GeoService:
     def __init__(self, db_path: str = None):
         self.db_path = db_path or GEOIP_DB_PATH
         self.reader = None
+        self._cache = {}
         self._init_maxmind()
 
     def _init_maxmind(self):
@@ -63,8 +64,30 @@ class GeoService:
             'source': 'maxmind' | 'ipapi' | 'unknown'
         }
         """
+        if not ip or not isinstance(ip, str):
+            return self._unknown_geo(ip or 'Unknown')
+
+        ip_clean = ip.strip()
+
+        # Check in-memory cache
+        if ip_clean in self._cache:
+            return dict(self._cache[ip_clean])
+
+        # Short-circuit private / loopback IPs immediately (0ms response)
+        if self._is_private_ip(ip_clean):
+            local_res = {
+                'ip': ip_clean,
+                'city': 'Internal Network', 'country': 'Private IP', 'country_code': 'LOCAL',
+                'latitude': 0.0, 'longitude': 0.0,
+                'asn': 'Private', 'org': 'Internal Infrastructure', 'is_hosting': False,
+                'risk_tier': 1, 'risk_score': 0,
+                'source': 'private_network'
+            }
+            self._cache[ip_clean] = local_res
+            return dict(local_res)
+
         result = {
-            'ip': ip,
+            'ip': ip_clean,
             'city': 'Unknown', 'country': 'Unknown', 'country_code': 'XX',
             'latitude': 0.0, 'longitude': 0.0,
             'asn': 'Unknown', 'org': 'Unknown', 'is_hosting': False,
@@ -75,7 +98,7 @@ class GeoService:
         # Try MaxMind first
         if self.reader:
             try:
-                response = self.reader.city(ip)
+                response = self.reader.city(ip_clean)
                 result.update({
                     'city': response.city.name or 'Unknown',
                     'country': response.country.name or 'Unknown',
@@ -85,26 +108,44 @@ class GeoService:
                     'source': 'maxmind'
                 })
             except Exception as e:
-                logger.debug(f"MaxMind lookup failed for {ip}: {e}")
+                logger.debug(f"MaxMind lookup failed for {ip_clean}: {e}")
 
         # Fallback to ipapi if MaxMind didn't work
         if result['source'] == 'unknown':
-            result = self._ipapi_lookup(ip, result)
+            result = self._ipapi_lookup(ip_clean, result)
 
         # Enrich with ASN data
-        result = self._enrich_asn(ip, result)
+        result = self._enrich_asn(ip_clean, result)
 
         # Calculate risk score
         result['risk_tier'] = COUNTRY_RISK_TIER.get(result['country_code'], 2)
         result['risk_score'] = self._calculate_risk_score(result)
 
-        return result
+        # Cache result
+        self._cache[ip_clean] = result
+        return dict(result)
+
+    def _is_private_ip(self, ip: str) -> bool:
+        """Check if IP address is private, loopback, or reserved"""
+        import ipaddress
+        try:
+            ip_obj = ipaddress.ip_address(ip)
+            return ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved or ip_obj.is_link_local
+        except ValueError:
+            return False
+
+    def _unknown_geo(self, ip: str) -> Dict:
+        return {
+            'ip': ip, 'city': 'Unknown', 'country': 'Unknown', 'country_code': 'XX',
+            'latitude': 0.0, 'longitude': 0.0, 'asn': 'Unknown', 'org': 'Unknown',
+            'is_hosting': False, 'risk_tier': 0, 'risk_score': 0, 'source': 'unknown'
+        }
 
     def _ipapi_lookup(self, ip: str, result: Dict) -> Dict:
-        """Fallback: ip-api.com lookup (free, 45 req/min)"""
+        """Fallback: ip-api.com lookup with fast 2.0s timeout"""
         import httpx
         try:
-            with httpx.Client(timeout=5) as client:
+            with httpx.Client(timeout=2.0) as client:
                 resp = client.get(f'http://ip-api.com/json/{ip}?fields=status,country,countryCode,city,lat,lon,isp,org,as')
                 if resp.status_code == 200:
                     data = resp.json()

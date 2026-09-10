@@ -160,19 +160,21 @@ async def scan_single_email(email_data: dict, index: int) -> dict:
 
 
 async def scan_emails(emails: List[dict], limit: int = 10) -> List[dict]:
-    """Scan multiple emails concurrently"""
+    """Scan multiple emails concurrently in parallel"""
+    targets = emails[:limit]
+    tasks = [scan_single_email(email_data, i) for i, email_data in enumerate(targets)]
+    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     results = []
-    for i, email_data in enumerate(emails[:limit]):
-        try:
-            result = await scan_single_email(email_data, i)
-            results.append(result)
-        except Exception as e:
-            logger.error(f"Scan error for email {i}: {e}")
+    for i, res in enumerate(raw_results):
+        if isinstance(res, Exception):
+            logger.error(f"Scan error for email {i}: {res}")
             results.append({
-                'email_id': email_data.get('id', f'email_{i}'),
-                'index': i, 'error': str(e),
+                'email_id': targets[i].get('id', f'email_{i}'),
+                'index': i, 'error': str(res),
                 'risk_assessment': {'risk_score': 0, 'risk_level': 'Error'}
             })
+        else:
+            results.append(res)
     return results
 
 

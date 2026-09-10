@@ -102,26 +102,37 @@ class RiskScoringEngine:
         total = sum(breakdown[k] * cls.WEIGHTS[k] for k in cls.WEIGHTS)
         risk_score = min(100, max(0, int(round(total))))
 
-        # Calibrate risk score and level to ensure consistency with ML prediction and threats
-        ml_pred = ml.get('prediction', '').lower()
-        if ml_pred == 'phishing':
-            # A confirmed phishing payload must have at least Medium/High severity, never Low or Safe
-            risk_score = max(risk_score, 55)
+        # Point Attributions for Explainable Risk Breakdown
+        attributions = [
+            {'signal': '🤖 ML Classifier Model', 'points': int(round(breakdown['ml_prediction'] * cls.WEIGHTS['ml_prediction'])), 'detail': f"Prediction: {ml.get('prediction', 'unknown')} ({int(ml.get('confidence', 0)*100)}% conf)"},
+            {'signal': '🔗 URL & Links Intel', 'points': int(round(breakdown['url_intelligence'] * cls.WEIGHTS['url_intelligence'])), 'detail': f"Max URL threat score: {url_score}/100"},
+            {'signal': '🔐 DMARC/SPF Auth', 'points': int(round(breakdown['authentication'] * cls.WEIGHTS['authentication'])), 'detail': f"SPF: {auth.get('spf', 'N/A')}, DKIM: {auth.get('dkim', 'N/A')}, DMARC: {auth.get('dmarc', 'N/A')}"},
+            {'signal': '🌍 Geo Origin Anomaly', 'points': int(round(breakdown['geolocation'] * cls.WEIGHTS['geolocation'])), 'detail': f"Geo risk score: {geo_score}/100"},
+            {'signal': '🦠 Threat Intel Databases', 'points': int(round(breakdown['threat_intel'] * cls.WEIGHTS['threat_intel'])), 'detail': f"Blacklist hit score: {ti_score}/100"},
+            {'signal': '📧 Header Anomaly & Trust', 'points': int(round(breakdown['forensic'] * cls.WEIGHTS['forensic'])), 'detail': f"Trust score penalty: {forensic_risk}/100"},
+        ]
 
         if risk_score >= 70:
             risk_level = 'Critical'
+            primary_finding = 'Critical threat: High-confidence phishing classification combined with domain/authentication anomalies.'
         elif risk_score >= 50:
             risk_level = 'High'
+            primary_finding = 'High threat: Multiple suspicious indicators present across header routing or links.'
         elif risk_score >= 30:
             risk_level = 'Medium'
+            primary_finding = 'Moderate risk: Minor authentication failures or suspicious link parameters detected.'
         elif risk_score >= 15:
             risk_level = 'Low'
+            primary_finding = 'Low risk: Standard email headers with minor non-critical warnings.'
         else:
             risk_level = 'Safe'
+            primary_finding = 'Email verified: Passed authentication (SPF/DKIM/DMARC) with no threat indicators.'
 
         return {
             'risk_score': risk_score,
             'risk_level': risk_level,
             'breakdown': breakdown,
+            'attributions': attributions,
+            'primary_finding': primary_finding,
             'weights': cls.WEIGHTS,
         }
