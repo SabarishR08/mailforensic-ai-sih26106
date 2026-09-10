@@ -196,7 +196,13 @@ def scan_text():
     finally:
         loop.close()
 
+    # Provide top-level convenience fields for legacy frontend callers
+    result['prediction'] = result.get('ml', {}).get('prediction', 'unknown')
+    result['confidence'] = result.get('ml', {}).get('confidence', 0.5)
+    result['model_loaded'] = True
+
     return jsonify(result)
+
 
 
 @email_bp.route('/api/logs')
