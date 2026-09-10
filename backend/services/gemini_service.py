@@ -18,8 +18,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY_FALLBACK = os.getenv("GROQ_API_KEY_FALLBACK")
+GROQ_KEYS = [k for k in [GROQ_API_KEY, GROQ_API_KEY_FALLBACK] if k]
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+
 
 
 logger = logging.getLogger(__name__)
@@ -48,8 +52,8 @@ def clean_json_response(raw_text: str) -> Optional[Dict[str, Any]]:
 
 
 async def classify_with_groq(email_text: str) -> Optional[Dict[str, Any]]:
-    """Priority 1: Groq API"""
-    if not GROQ_API_KEY:
+    """Priority 1: Groq API (tries primary key, then fallback account key if rate limited or failed)"""
+    if not GROQ_KEYS:
         return None
     url = "https://api.groq.com/openai/v1/chat/completions"
     prompt = (
@@ -57,10 +61,6 @@ async def classify_with_groq(email_text: str) -> Optional[Dict[str, Any]]:
         f'{{"category": "Phishing|Spam|Legitimate|Suspicious", "reason": "brief explanation", "confidence": 0.0-1.0}}\n\n'
         f'Email:\n{email_text[:3000]}'
     )
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
     payload = {
         "model": "openai/gpt-oss-20b",
         "messages": [
@@ -70,21 +70,28 @@ async def classify_with_groq(email_text: str) -> Optional[Dict[str, Any]]:
         "max_tokens": 250,
         "temperature": 0.1
     }
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                content = resp.json()["choices"][0]["message"]["content"]
-                parsed = clean_json_response(content)
-                if parsed and "category" in parsed:
-                    parsed["provider"] = "groq"
-                    parsed["model"] = "openai/gpt-oss-20b"
-                    return parsed
-            else:
-                logger.warning(f"Groq classification failed status={resp.status_code}: {resp.text[:100]}")
-    except Exception as e:
-        logger.warning(f"Groq classification request error: {e}")
+
+    for key_idx, key in enumerate(GROQ_KEYS):
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json"
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    parsed = clean_json_response(content)
+                    if parsed and "category" in parsed:
+                        parsed["provider"] = "groq"
+                        parsed["model"] = "openai/gpt-oss-20b"
+                        return parsed
+                else:
+                    logger.warning(f"Groq (key {key_idx+1}) failed status={resp.status_code}: {resp.text[:100]}")
+        except Exception as e:
+            logger.warning(f"Groq (key {key_idx+1}) request error: {e}")
     return None
+
 
 
 async def classify_with_gemini(email_text: str) -> Optional[Dict[str, Any]]:
@@ -210,13 +217,13 @@ async def analyze_threat_fusion(analysis_data: dict) -> dict:
         f'{{"summary": "one paragraph threat summary", "enhanced_risk_score": 0-100, "key_findings": ["finding1", "finding2"], "recommendations": ["action1", "action2"]}}'
     )
 
-    # 1. Try Groq
-    if GROQ_API_KEY:
+    # 1. Try Groq (iterating keys)
+    for key_idx, key in enumerate(GROQ_KEYS):
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 resp = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                     json={
                         "model": "openai/gpt-oss-20b",
                         "messages": [
@@ -233,7 +240,8 @@ async def analyze_threat_fusion(analysis_data: dict) -> dict:
                         parsed["provider"] = "groq"
                         return parsed
         except Exception as e:
-            logger.warning(f"Groq threat fusion failed: {e}")
+            logger.warning(f"Groq threat fusion failed (key {key_idx+1}): {e}")
+
 
     # 2. Try Gemini
     if GEMINI_API_KEY:
