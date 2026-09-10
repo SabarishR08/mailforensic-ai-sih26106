@@ -22,10 +22,8 @@ SPA_DIST = project_root / 'frontend' / 'dist'
 
 
 def spa_enabled() -> bool:
-    force = os.getenv('FRONTEND_SPA', '').strip().lower()
-    if force:
-        return force in ('1', 'true', 'yes', 'on')
-    return (SPA_DIST / 'index.html').exists()
+    force = os.getenv('FRONTEND_SPA', '0').strip().lower()
+    return force in ('1', 'true', 'yes', 'on')
 
 
 def spa_index():
