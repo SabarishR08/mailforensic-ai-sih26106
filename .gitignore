@@ -52,5 +52,5 @@ Thumbs.db
 
 # React frontend
 frontend/node_modules/
-# frontend/dist/ is tracked so Render native Python environment serves React SPA directly
+frontend/dist/
 
