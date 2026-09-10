@@ -10,10 +10,9 @@
             background: var(--bg-card);
             border-radius: 16px; padding: 20px; text-align: center;
             border: 1px solid var(--border-default); border-top: 3px solid var(--accent-violet);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .stat-card:hover { transform: translateY(-3px); border-color: var(--border-hover); background: var(--bg-card-elevated); }
+        .stat-card:hover { border-color: var(--border-hover); background: var(--bg-card-elevated); }
         .stat-card .number { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -1px; }
         .stat-card .label { color: var(--text-muted); font-size: 0.78rem; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
         .stat-card.phishing .number { color: var(--status-danger); }
@@ -26,10 +25,9 @@
         /* Chart cards */
         .chart-card {
             background: var(--bg-card);
-            border-radius: 16px; padding: 24px; margin-bottom: 20px;
+            border-radius: 14px; padding: 24px; margin-bottom: 20px;
             border: 1px solid var(--border-default);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            transition: all 0.3s ease;
+            transition: border-color 0.2s ease, background 0.2s ease;
         }
         .chart-card:hover { border-color: var(--border-hover); background: var(--bg-card-elevated); }
         .chart-card h6 {
@@ -53,7 +51,6 @@
         .activity-item.legitimate { border-left-color: var(--status-safe); }
         .activity-dot {
             width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
-            box-shadow: 0 0 8px currentColor;
         }
         .activity-dot.phishing { background: var(--status-danger); color: var(--status-danger); }
         .activity-dot.legitimate { background: var(--status-safe); color: var(--status-safe); }
@@ -81,7 +78,7 @@
             font-size: 0.85rem; background: var(--bg-input); color: var(--text-primary);
             outline: none; transition: all 0.2s ease;
         }
-        .controls select:focus { border-color: var(--accent-violet); box-shadow: 0 0 10px rgba(124, 58, 237, 0.25); }
+        .controls select:focus { border-color: var(--accent-violet); box-shadow: none; }
         .controls label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
 
         .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }

@@ -5,16 +5,16 @@ import ChartCanvas from '../components/Chart'
 import { escapeHtml, fmtTime } from '../lib/format'
 
 const COLORS = {
-  phishing: '#c62828',
-  phishingBg: 'rgba(198,40,40,0.15)',
-  legitimate: '#2e7d32',
-  legitimateBg: 'rgba(46,125,50,0.15)',
-  unknown: '#f9a825',
-  unknownBg: 'rgba(249,168,37,0.15)',
-  spf: '#1565c0',
-  dkim: '#6a1b9a',
-  dmarc: '#e65100',
-  riskColors: { Critical: '#c62828', High: '#e65100', Medium: '#f9a825', Low: '#2e7d32', Safe: '#1565c0', Unknown: '#9e9e9e' } as Record<string, string>,
+  phishing: '#EF4444',
+  phishingBg: 'rgba(239,68,68,0.12)',
+  legitimate: '#10B981',
+  legitimateBg: 'rgba(16,185,129,0.12)',
+  unknown: '#F59E0B',
+  unknownBg: 'rgba(245,158,11,0.12)',
+  spf: '#4F46E5',
+  dkim: '#8B5CF6',
+  dmarc: '#06B6D4',
+  riskColors: { Critical: '#EF4444', High: '#F97316', Medium: '#F59E0B', Low: '#10B981', Safe: '#06B6D4', Unknown: '#64748B' } as Record<string, string>,
 }
 
 export default function ThreatIntelPage() {

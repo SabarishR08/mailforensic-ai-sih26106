@@ -308,7 +308,7 @@ export default function ThreatMapPage() {
       className: '',
       html:
         `<div style="width:${size}px;height:${size}px;background:${color};` +
-        `border:2px solid ${color}44;border-radius:50%;box-shadow:0 0 ${size}px ${color}66;"></div>`,
+        `border:2px solid #FFFFFF;border-radius:50%;opacity:0.9;"></div>`,
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
     })

@@ -218,7 +218,7 @@ export default function DemoPage() {
           <div className="progress-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.85rem', color: '#8892a4' }}>{progress.label}</span>
-              <span style={{ fontSize: '0.85rem', color: 'var(--glow)', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
                 {progress.pct}%
               </span>
             </div>
@@ -362,7 +362,7 @@ export default function DemoPage() {
             className="toast-msg"
             style={{
               borderLeftColor:
-                t.kind === 'danger' ? '#ef4444' : t.kind === 'success' ? '#22c55e' : 'var(--glow)',
+                t.kind === 'danger' ? '#ef4444' : t.kind === 'success' ? '#22c55e' : 'var(--accent-cyan)',
             }}
           >
             {t.msg}

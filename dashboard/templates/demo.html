@@ -10,8 +10,7 @@
         .progress-bar-fill {
             height: 100%; width: 0%;
             background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
-            border-radius: 4px; transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+            border-radius: 4px; transition: width 0.4s ease;
         }
         .progress-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
 
@@ -21,16 +20,14 @@
 
         .scan-card {
             background: var(--bg-card);
-            border-radius: 16px; padding: 18px; border: 1px solid var(--border-default);
-            animation: cardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); transition: all 0.3s ease;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border-radius: 14px; padding: 18px; border: 1px solid var(--border-default);
+            transition: border-color 0.2s ease, background 0.2s ease;
         }
-        .scan-card:hover { border-color: var(--border-hover); transform: translateY(-2px); background: var(--bg-card-elevated); }
+        .scan-card:hover { border-color: var(--border-hover); background: var(--bg-card-elevated); }
         .scan-card.phishing { border-left: 4px solid var(--status-danger); }
         .scan-card.legitimate { border-left: 4px solid var(--status-safe); }
         .scan-card.unknown { border-left: 4px solid var(--status-warning); }
-        .scan-card.scanning { border-left: 4px solid var(--accent-cyan); opacity: 0.85; animation: scanPulse 1.5s infinite; }
-        @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .scan-card.scanning { border-left: 4px solid var(--accent-cyan); opacity: 0.85; }
 
         .card-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .card-email-id { font-size: 0.78rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
@@ -52,7 +49,7 @@
         .auth-missing { background: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border-default); }
 
         .side-panel { display: flex; flex-direction: column; gap: 16px; }
-        .stats-card { background: var(--bg-card); border-radius: 16px; padding: 22px; border: 1px solid var(--border-default); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .stats-card { background: var(--bg-card); border-radius: 14px; padding: 22px; border: 1px solid var(--border-default); }
         .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-default); }
         .stat-row:last-child { border-bottom: none; }
         .stat-label { color: var(--text-muted); font-size: 0.85rem; }
@@ -61,12 +58,11 @@
 
         .toast-area { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         .toast-msg {
-            padding: 12px 18px; border-radius: 12px; font-size: 0.85rem; animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 12px 18px; border-radius: 10px; font-size: 0.85rem;
             background: var(--bg-card);
             border: 1px solid var(--border-default); border-left: 4px solid var(--accent-violet);
-            color: var(--text-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            color: var(--text-primary);
         }
-        @keyframes toastIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
 
         .control-bar { flex-shrink: 0; display: flex; gap: 12px; align-items: center; background: var(--bg-card); padding: 12px 20px; border-radius: 14px; border: 1px solid var(--border-default); }
         .control-bar input { background: var(--bg-input); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; width: 85px; font-family: 'JetBrains Mono', monospace; text-align: center; }
@@ -74,8 +70,7 @@
         .status-pill { padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
         .status-connected { background: rgba(52,211,153,0.15); color: var(--status-safe); border: 1px solid rgba(52,211,153,0.3); }
         .status-disconnected { background: rgba(244,63,94,0.15); color: var(--status-danger); border: 1px solid rgba(244,63,94,0.3); }
-        .status-scanning { background: rgba(124,58,237,0.15); color: var(--accent-violet); border: 1px solid rgba(124,58,237,0.3); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .status-scanning { background: rgba(124,58,237,0.15); color: var(--accent-violet); border: 1px solid rgba(124,58,237,0.3); }
     </style>
 {% endblock %}
 
