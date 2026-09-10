@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Email Scanner — AI Email Forensics{% endblock %}
+{% block title %}Email Scanner &mdash; AI Email Forensics{% endblock %}
 {% block content %}
 <div class="container-fluid p-0">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -61,7 +61,7 @@
                 <div id="sample-status" class="text-muted" style="font-size:0.85rem"></div>
                 <div class="mt-auto pt-2">
                     <small class="text-success" style="font-size: 0.78rem;">
-                        <i class="fas fa-check-circle me-1"></i> No credentials required — works instantly
+                        <i class="fas fa-check-circle me-1"></i> No credentials required &mdash; works instantly
                     </small>
                 </div>
             </div>
@@ -426,7 +426,7 @@ function analyzeEml() {
             body: JSON.stringify({text: content})
         }).then(r => r.json()).then(data => {
             window.morphButton(btn, 'success', 'Analysis Complete');
-            status.textContent = 'Γ£à Analysis complete!';
+            status.textContent = '&#10004; Analysis complete!';
             status.className = 'text-success';
 
             var badge = data.prediction === 'phishing' ? 'risk-critical' :
@@ -440,7 +440,7 @@ function analyzeEml() {
             document.getElementById('results-container').innerHTML = html;
         }).catch(err => {
             window.morphButton(btn, 'error', 'Failed');
-            status.textContent = 'Γ¥î Error: ' + err.message;
+            status.textContent = '&#10008; Error: ' + err.message;
             status.className = 'text-danger';
         });
     };
@@ -467,15 +467,15 @@ function scanGmail() {
             window.morphButton(btn, 'error', 'Scan Failed');
             var help = document.getElementById('gmail-help');
             if (data.code === 'gmail_not_configured') {
-                status.innerHTML = 'Γ¥î <b>Gmail is not connected on this server.</b>';
+                status.innerHTML = '&#10008; <b>Gmail is not connected on this server.</b>';
                 status.className = 'text-danger';
                 if (help) {
                     help.className = 'mt-2 p-3 rounded-3 text-danger';
                     help.style.cssText = 'font-size:0.8rem; border:1px solid rgba(244,63,94,0.3); background: var(--bg-input);';
-                    help.innerHTML = '<i class="fas fa-cog me-1"></i> To enable live inbox scans, the admin must set <code>GMAIL_CREDENTIALS_JSON</code> and <code>GMAIL_REFRESH_TOKEN</code> env vars (or place <code>credentials/credentials.json</code>) and restart. For a no-setup demo, use <b>Test with Sample Data</b> below — it needs no credentials.';
+                    help.innerHTML = '<i class="fas fa-cog me-1"></i> To enable live inbox scans, the admin must set <code>GMAIL_CREDENTIALS_JSON</code> and <code>GMAIL_REFRESH_TOKEN</code> env vars (or place <code>credentials/credentials.json</code>) and restart. For a no-setup demo, use <b>Test with Sample Data</b> below &mdash; it needs no credentials.';
                 }
             } else if (data.code === 'gmail_auth_failed') {
-                status.innerHTML = '≡ƒöÉ <b>Gmail token rejected — expired or revoked.</b>';
+                status.innerHTML = '&#128274; <b>Gmail token rejected &mdash; expired or revoked.</b>';
                 status.className = 'text-danger';
                 if (help) {
                     help.className = 'mt-2 p-3 rounded-3 text-danger';
@@ -483,7 +483,7 @@ function scanGmail() {
                     help.innerHTML = '<i class="fas fa-key me-1"></i> The server\'s Gmail refresh token is no longer valid (Google revokes tokens when the OAuth consent screen is in Testing mode after 7 days). The admin must run <code>backend/auth_gmail.py</code>, complete the browser sign-in, and update <code>GMAIL_REFRESH_TOKEN</code> on the server. <b>Test with Sample Data</b> below works meanwhile.';
                 }
             } else if (data.code === 'gmail_empty') {
-                status.innerHTML = '⚠️∩╕Å Gmail connected, but returned 0 messages.';
+                status.innerHTML = '&#9888; Gmail connected, but returned 0 messages.';
                 status.className = 'text-warning';
                 if (help) {
                     help.className = 'mt-2 p-3 rounded-3 text-warning';
@@ -491,13 +491,13 @@ function scanGmail() {
                     help.innerHTML = '<i class="fas fa-info-circle me-1"></i> Confirm the connected account has mail and that the OAuth scope includes read access. Meanwhile, <b>Test with Sample Data</b> works instantly without credentials.';
                 }
             } else {
-                status.innerHTML = 'Γ¥î ' + data.error;
+                status.innerHTML = '&#10008; ' + data.error;
                 status.className = 'text-danger';
                 if (help) help.className = 'd-none';
             }
         } else {
             window.morphButton(btn, 'success', 'Scan Complete');
-            status.textContent = 'Γ£à Scanned ' + data.count + ' real emails from Gmail';
+            status.textContent = '&#10004; Scanned ' + data.count + ' real emails from Gmail';
             status.className = 'text-success';
             var help = document.getElementById('gmail-help');
             if (help) help.className = 'd-none';
@@ -505,7 +505,7 @@ function scanGmail() {
         }
     }).catch(err => {
         window.morphButton(btn, 'error', 'Error');
-        status.textContent = 'Γ¥î Error: ' + err.message;
+        status.textContent = '&#10008; Error: ' + err.message;
         status.className = 'text-danger';
     });
 }
@@ -526,17 +526,17 @@ function scanSample() {
     }).then(r => r.json()).then(data => {
         if (data.error) {
             window.morphButton(btn, 'error', 'Failed');
-            status.textContent = 'Γ¥î ' + data.error;
+            status.textContent = '&#10008; ' + data.error;
             status.className = 'text-danger';
         } else {
             window.morphButton(btn, 'success', 'Samples Analyzed');
-            status.textContent = 'Γ£à Analyzed ' + data.count + ' sample threat emails';
+            status.textContent = '&#10004; Analyzed ' + data.count + ' sample threat emails';
             status.className = 'text-success';
             renderResults(data.results, 'Sample Data Test');
         }
     }).catch(err => {
         window.morphButton(btn, 'error', 'Error');
-        status.textContent = 'Γ¥î Error: ' + err.message;
+        status.textContent = '&#10008; Error: ' + err.message;
         status.className = 'text-danger';
     });
 }
@@ -559,8 +559,8 @@ function scanText() {
     }).then(r => r.json()).then(data => {
         var badge = data.prediction === 'phishing' ? 'risk-critical' :
                     data.prediction === 'suspicious' ? 'risk-medium' : 'risk-safe';
-        var label = data.prediction === 'phishing' ? '≡ƒÜ¿ PHISHING DETECTED' :
-                    data.prediction === 'suspicious' ? '⚠️∩╕Å SUSPICIOUS' : 'Γ£à LEGITIMATE';
+        var label = data.prediction === 'phishing' ? '&#128680; PHISHING DETECTED' :
+                    data.prediction === 'suspicious' ? '&#9888; SUSPICIOUS' : '&#10004; LEGITIMATE';
 
         var html = '<div class="card p-4 card-ai">';
         html += '<h6><i class="fas fa-brain text-violet me-2"></i> ML Classification Result</h6>';
@@ -577,7 +577,7 @@ function scanText() {
         html += '</div>';
         html += '<div class="col-md-4">';
         html += '<h6 class="text-muted">Model Status</h6>';
-        html += '<p>' + (data.model_loaded ? 'Γ£à ML Engine Active' : '⚠️∩╕Å Default Classification Model') + '</p>';
+        html += '<p>' + (data.model_loaded ? '&#10004; ML Engine Active' : '&#9888; Default Classification Model') + '</p>';
         html += '</div>';
         html += '</div></div>';
         document.getElementById('results-container').innerHTML = html;

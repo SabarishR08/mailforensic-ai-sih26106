@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Forensic Analysis — AI Email Forensics{% endblock %}
+{% block title %}Forensic Analysis &mdash; AI Email Forensics{% endblock %}
 {% block extra_head %}
     <style>
         .upload-zone {
@@ -162,7 +162,7 @@
 {% endblock %}
 
 {% block content %}
-    <h4 class="mb-4 text-white fw-bold headline-slide-front"><i class="fas fa-microscope text-cyan me-2"></i> Forensic Analysis — .eml Upload</h4>
+    <h4 class="mb-4 text-white fw-bold headline-slide-front"><i class="fas fa-microscope text-cyan me-2"></i> Forensic Analysis &mdash; .eml Upload</h4>
 
     <div class="container-fluid p-0" style="max-width: 1200px;">
 
@@ -171,7 +171,7 @@
             <div class="upload-zone" id="drop-zone">
                 <div class="icon"><i class="fas fa-file-import"></i></div>
                 <h5>Drop an .eml file here</h5>
-                <p>or click to browse — no Gmail credentials needed</p>
+                <p>or click to browse &mdash; no Gmail credentials needed</p>
                 <p style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">
                     Accepts raw .eml files exported from any email client
                 </p>
@@ -207,8 +207,8 @@
                         <h6>Risk Assessment</h6>
                     </div>
                     <div class="text-center">
-                        <div class="risk-gauge" id="risk-gauge">—</div>
-                        <div class="risk-verdict" id="risk-level-text">—</div>
+                        <div class="risk-gauge" id="risk-gauge">&mdash;</div>
+                        <div class="risk-verdict" id="risk-level-text">&mdash;</div>
                         <div style="color:var(--text-muted); font-size:0.8rem; margin-top:2px;" id="risk-score-text">out of 100</div>
                     </div>
                 </div>
@@ -222,13 +222,13 @@
                     <div class="text-center" style="padding: 16px 0;">
                         <div id="ml-badge-container"></div>
                         <div style="margin-top: 12px; color: var(--text-muted); font-size: 0.85rem;">
-                            Confidence: <span id="ml-confidence" style="font-weight:700; color:var(--text-primary);">—</span>
+                            Confidence: <span id="ml-confidence" style="font-weight:700; color:var(--text-primary);">&mdash;</span>
                         </div>
                         <div class="conf-bar" style="max-width: 250px; margin: 10px auto 0; background: var(--bg-panel); border: 1px solid var(--border-default); border-radius: 4px; height: 8px; overflow: hidden;">
                             <div class="conf-fill" id="ml-conf-bar" style="height: 100%; transition: width 0.8s ease;"></div>
                         </div>
                         <div style="margin-top: 12px; color: var(--text-muted); font-size: 0.8rem;">
-                            Model: <span id="ml-model-used" style="color:var(--text-primary);">—</span>
+                            Model: <span id="ml-model-used" style="color:var(--text-primary);">&mdash;</span>
                         </div>
                     </div>
                 </div>
@@ -255,12 +255,12 @@
                         <h6>Email Metadata</h6>
                     </div>
                     <table class="meta-table">
-                        <tr><td>Subject</td><td id="meta-subject">—</td></tr>
-                        <tr><td>From</td><td id="meta-from">—</td></tr>
-                        <tr><td>To</td><td id="meta-to">—</td></tr>
-                        <tr><td>Date</td><td id="meta-date">—</td></tr>
-                        <tr><td>Message-ID</td><td id="meta-msgid" style="font-family:monospace;font-size:0.78rem;">—</td></tr>
-                        <tr><td>Body Size</td><td id="meta-bodylen">—</td></tr>
+                        <tr><td>Subject</td><td id="meta-subject">&mdash;</td></tr>
+                        <tr><td>From</td><td id="meta-from">&mdash;</td></tr>
+                        <tr><td>To</td><td id="meta-to">&mdash;</td></tr>
+                        <tr><td>Date</td><td id="meta-date">&mdash;</td></tr>
+                        <tr><td>Message-ID</td><td id="meta-msgid" style="font-family:monospace;font-size:0.78rem;">&mdash;</td></tr>
+                        <tr><td>Body Size</td><td id="meta-bodylen">&mdash;</td></tr>
                     </table>
                 </div>
             </div>
@@ -276,27 +276,27 @@
                     <div class="geo-grid" id="geo-grid">
                         <div class="geo-item">
                             <div class="geo-label">IP Address</div>
-                            <div class="geo-value" id="geo-ip" style="font-family:monospace;">—</div>
+                            <div class="geo-value" id="geo-ip" style="font-family:monospace;">&mdash;</div>
                         </div>
                         <div class="geo-item">
                             <div class="geo-label">Country</div>
-                            <div class="geo-value" id="geo-country">—</div>
+                            <div class="geo-value" id="geo-country">&mdash;</div>
                         </div>
                         <div class="geo-item">
                             <div class="geo-label">City</div>
-                            <div class="geo-value" id="geo-city">—</div>
+                            <div class="geo-value" id="geo-city">&mdash;</div>
                         </div>
                         <div class="geo-item">
                             <div class="geo-label">ASN / Org</div>
-                            <div class="geo-value" id="geo-org" style="font-size:0.8rem;">—</div>
+                            <div class="geo-value" id="geo-org" style="font-size:0.8rem;">&mdash;</div>
                         </div>
                         <div class="geo-item">
                             <div class="geo-label">Hosting</div>
-                            <div class="geo-value" id="geo-hosting">—</div>
+                            <div class="geo-value" id="geo-hosting">&mdash;</div>
                         </div>
                         <div class="geo-item">
                             <div class="geo-label">Risk Score</div>
-                            <div class="geo-value" id="geo-risk">—</div>
+                            <div class="geo-value" id="geo-risk">&mdash;</div>
                         </div>
                     </div>
                 </div>
@@ -350,7 +350,7 @@
                     <i class="fas fa-file-alt"></i>
                     <h6>Email Body Content</h6>
                 </div>
-                <div class="body-preview" id="body-preview">—</div>
+                <div class="body-preview" id="body-preview">&mdash;</div>
             </div>
 
             <!-- Actions -->
@@ -465,11 +465,11 @@
         document.getElementById('auth-all-pass').style.display = auth.all_pass ? '' : 'none';
 
         // --- Metadata ---
-        document.getElementById('meta-subject').textContent = data.subject || '—';
-        document.getElementById('meta-from').textContent = data.from || '—';
-        document.getElementById('meta-to').textContent = data.to || '—';
-        document.getElementById('meta-date').textContent = data.date || '—';
-        document.getElementById('meta-msgid').textContent = data.email_id || '—';
+        document.getElementById('meta-subject').textContent = data.subject || '&mdash;';
+        document.getElementById('meta-from').textContent = data.from || '&mdash;';
+        document.getElementById('meta-to').textContent = data.to || '&mdash;';
+        document.getElementById('meta-date').textContent = data.date || '&mdash;';
+        document.getElementById('meta-msgid').textContent = data.email_id || '&mdash;';
         document.getElementById('meta-bodylen').textContent = (data.body_length || 0).toLocaleString() + ' chars';
 
         // --- Routing hops ---
@@ -477,7 +477,7 @@
         var hopsHtml = '';
         hops.forEach(function(hop) {
             var sc = hop.suspicious ? ' suspicious' : '';
-            var geoStr = hop.geo ? ' — ' + (hop.geo.city || '') + ', ' + (hop.geo.country || '') : '';
+            var geoStr = hop.geo ? ' &mdash; ' + (hop.geo.city || '') + ', ' + (hop.geo.country || '') : '';
             hopsHtml += '<div class="hop-item' + sc + '">' +
                 '<div class="hop-number">' + hop.hop_number + '</div>' +
                 '<div class="hop-detail">' +
@@ -508,10 +508,10 @@
         // --- Geo ---
         if (geo.ip && geo.source !== 'unknown') {
             document.getElementById('geo-card').style.display = '';
-            document.getElementById('geo-ip').textContent = geo.ip || '—';
-            document.getElementById('geo-city').textContent = geo.city || '—';
-            document.getElementById('geo-country').textContent = (geo.country || '—') + (geo.country_code ? ' (' + geo.country_code + ')' : '');
-            document.getElementById('geo-org').textContent = geo.org || '—';
+            document.getElementById('geo-ip').textContent = geo.ip || '&mdash;';
+            document.getElementById('geo-city').textContent = geo.city || '&mdash;';
+            document.getElementById('geo-country').textContent = (geo.country || '&mdash;') + (geo.country_code ? ' (' + geo.country_code + ')' : '');
+            document.getElementById('geo-org').textContent = geo.org || '&mdash;';
             document.getElementById('geo-hosting').innerHTML = geo.is_hosting ? '<span style="color:var(--status-warning);">Yes (cloud/VPS)</span>' : '<span style="color:var(--status-safe);">No</span>';
             document.getElementById('geo-risk').textContent = (geo.risk_score || 0) + '/100 (tier ' + (geo.risk_tier || 0) + ')';
         }

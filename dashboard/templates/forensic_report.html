@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Forensic Report — {{ scan.email_id }}{% endblock %}
+{% block title %}Forensic Report &mdash; {{ scan.email_id }}{% endblock %}
 {% block content %}
 <div class="container-fluid p-0">
     <!-- Page Header -->
@@ -174,7 +174,7 @@
                             <td style="font-size:0.8rem; font-family:'JetBrains Mono', monospace">{{ hop.by_host or '-' }}</td>
                             <td class="font-monospace" style="font-size:0.82rem">{{ hop.ip or '-' }}</td>
                             <td style="font-size:0.82rem">{% if hop.geo %}{{ hop.geo.city }}, {{ hop.geo.country_code }}{% else %}-{% endif %}</td>
-                            <td>{% if hop.suspicious %}<span class="badge-risk risk-critical">⚠️ {{ hop.suspicious_reasons|join(', ') }}</span>{% else %}<span class="text-success">✓ Clear</span>{% endif %}</td>
+                            <td>{% if hop.suspicious %}<span class="badge-risk risk-critical">&#9888; {{ hop.suspicious_reasons|join(', ') }}</span>{% else %}<span class="text-success">&#10003; Clear</span>{% endif %}</td>
                         </tr>
                         {% endfor %}
                         </tbody>
@@ -231,7 +231,7 @@
 {% if geo and geo.latitude %}
 <script>
     var map = L.map('forensic-map', { zoomControl: false, attributionControl: false }).setView([{{ geo.latitude }}, {{ geo.longitude }}], 8);
-    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© CartoDB' }).addTo(map);
+    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; CartoDB' }).addTo(map);
     L.marker([{{ geo.latitude }}, {{ geo.longitude }}]).addTo(map)
         .bindPopup('<b style="color:#fff">{{ geo.city }}, {{ geo.country }}</b><br><span style="color:#aaa">Risk: {{ geo.risk_score }}/100</span>').openPopup();
 </script>
